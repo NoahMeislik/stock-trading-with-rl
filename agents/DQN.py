@@ -5,7 +5,7 @@ from collections import deque
 from .agent import Agent
 
 class Agent(Agent):
-    def __init__(self, state_size, window_size, action_size, gamma, epsilon, epsilon_decay, epsilon_min, learning_rate, episodes, is_eval=False, model_name="", stock_name=""):
+    def __init__(self, state_size, window_size, action_size, gamma, epsilon, epsilon_decay, epsilon_min, learning_rate, episodes, is_eval=False, model_name="", stock_name="", episode=1):
         """
         state_size: Size of the state coming from the environment
         action_size: How many decisions the algo will make in the end
@@ -34,8 +34,9 @@ class Agent(Agent):
         self.sess = tf.Session()
         self.memory = deque(maxlen=2000)
         if self.is_eval:
-            self.saver = tf.train.Saver()
-            self.saver.restore(sess, "/models/{}/{}.ckpt".format(stock_name, model_name))
+            model_name = stock_name + "-" + str(episode)
+            self.saver = tf.train.import_meta_graph("models/{}/{}/{}".format(stock_name, model_name, model_name + "-" + str(episode) + ".meta"))
+            self.saver.restore(self.sess, "models/{}/{}/{}".format(stock_name, model_name, model_name + "-" + str(episode)))
         else:
             self._model_init()
             self.sess.run(self.init)

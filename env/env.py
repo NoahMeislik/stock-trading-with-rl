@@ -15,15 +15,16 @@ class MarketEnv():
         self.window_size = window_size
         self.starting_balance = account_balance
         self.account_balance = account_balance
-        self.train_test_split = None
-        self.print_report = True
+        self.train_test_split = train_test_split
+        self.print_report = print_report
         self.inventory = []
         self.state = None
         self.done = True # Start off by calling MarketEnv.reset() will change this to false
+        self.is_eval = is_eval
 
 
         self._get_data()
-        self.l = len(self.train) - 1 - self.window_size
+        self.l = len(self.train) - 1 - self.window_size if not self.is_eval else len(self.test) - 1 - self.window_size
 
     def _get_data(self):
         scaler = MinMaxScaler() # Normalize time series data
@@ -33,9 +34,13 @@ class MarketEnv():
             self.train = scaler.fit_transform(data.values)
             self.prices = data.values
         else:
-            self.train = scaler.fit_transform(data.values[:self.train_test_split * size])
-            self.test = scaler.fit_transform(data.values[self.train_test_split * size:])
-            self.prices = data.values[:self.train_test_split * size]
+            print(np.floor(self.train_test_split * size))
+            self.train = scaler.fit_transform(data.values[:int(np.floor(self.train_test_split * size))])
+            self.test = scaler.fit_transform(data.values[int(np.floor(self.train_test_split * size)):])
+            if not self.is_eval:
+                self.prices = data.values[:int(np.floor(self.train_test_split * size))]
+            if self.is_eval:
+                self.prices = data.values[int(np.floor(self.train_test_split * size)):]
 
     def _flatten(self):
         for price in self.inventory:
@@ -54,13 +59,22 @@ class MarketEnv():
         self.sell = []
         self.dates = []
 
-        self.state = getState(self.train, 0, self.window_size).tolist()
-        for i in range(len(self.state)):
-            self.state[i].append(self.unrealized_gain)
-            self.state[i].append(self.account_balance)
-        
-        self.state = np.array(self.state)
-        return self.state
+        if not self.is_eval:
+            self.state = getState(self.train, 0, self.window_size).tolist()
+            for i in range(len(self.state)):
+                self.state[i].append(self.unrealized_gain)
+                self.state[i].append(self.account_balance)
+            
+            self.state = np.array(self.state)
+            return self.state
+        if self.is_eval:
+            self.state = getState(self.test, 0, self.window_size).tolist()
+            for i in range(len(self.state)):
+                self.state[i].append(self.unrealized_gain)
+                self.state[i].append(self.account_balance)
+            
+            self.state = np.array(self.state)
+            return self.state
 
     def step(self, action, time):
         if self.done:
@@ -81,8 +95,6 @@ class MarketEnv():
             print("Sell: " + str(self.prices[time][-2]) + " | Profit: " + str(self.prices[time][-2] - bought_price))
             self.sell.append((time, self.prices[time][-2]))
 
-
-        self.state = getState(self.train, time, self.window_size).tolist()
         self.done = True if time == self.l - 1 else False
 
         if self.done:
@@ -91,13 +103,24 @@ class MarketEnv():
             print("Total Profit: " + str(self.episode_profit))
             print("--------------------------------")
 
-        self.unrealized_gain = self.train[time][-2] - self.inventory[0] if len(self.inventory) > 0 else 0.
-        
-        for i in range(len(self.state)):
-            self.state[i].append(self.unrealized_gain)
-            self.state[i].append(self.account_balance)
-            # Fix this so the array is 10 days worth of 9 info each
-        self.state = np.array(self.state)
+
+        if not self.is_eval:
+            self.unrealized_gain = self.train[time][-2] - self.inventory[0] if len(self.inventory) > 0 else 0.
+            
+            for i in range(len(self.state)):
+                self.state[i].append(self.unrealized_gain)
+                self.state[i].append(self.account_balance)
+                # Fix this so the array is 10 days worth of 9 info each
+            self.state = np.array(self.state)
+
+        if not self.is_eval:
+            self.unrealized_gain = self.test[time][-2] - self.inventory[0] if len(self.inventory) > 0 else 0.
+            
+            for i in range(len(self.state)):
+                self.state[i].append(self.unrealized_gain)
+                self.state[i].append(self.account_balance)
+                # Fix this so the array is 10 days worth of 9 info each
+            self.state = np.array(self.state)
 
         return self.state, int(self.action), self.reward, self.done
 		

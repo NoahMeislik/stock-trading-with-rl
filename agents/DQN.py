@@ -31,7 +31,7 @@ class Agent(Agent):
 
         self.layers = [self.state_size, 64, 32, 8]
         tf.reset_default_graph()
-        self.sess = tf.Session()
+        self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement = True))
         self.memory = deque(maxlen=2000)
         if self.is_eval:
             model_name = stock_name + "-" + str(episode)
@@ -39,63 +39,64 @@ class Agent(Agent):
             self.saver.restore(self.sess, "models/{}/{}/{}".format(stock_name, model_name, model_name + "-" + str(episode)))
         else:
             self._model_init()
+            self.saver = tf.train.Saver()
             self.sess.run(self.init)
             path = "tmp/{}/1".format(self.stock_name)
             self.writer = tf.summary.FileWriter(path)
             self.writer.add_graph(self.sess.graph)
-            self.saver = tf.train.Saver()
 
     def _model_init(self):
         """
         Init tensorflow graph vars
         """
         # (1,10,9)
-        self.X_input = tf.placeholder(tf.float32, shape=(None))
-        self.Y_input = tf.placeholder(tf.float32, shape=(None))
-        # self.dropout_keep_prob = tf.placeholder(tf.float32) For dropout
+        with tf.device("/device:GPU:0"):
+            self.X_input = tf.placeholder(tf.float32, shape=(None))
+            self.Y_input = tf.placeholder(tf.float32, shape=(None))
+            # self.dropout_keep_prob = tf.placeholder(tf.float32) For dropout
 
-        # Can be changed to another initializer
-        self.initializer = tf.contrib.layers.xavier_initializer()
+            # Can be changed to another initializer
+            self.initializer = tf.initializers.truncated_normal(seed=1)
 
-        self.neurons = self.X_input
+            self.neurons = self.X_input
 
-        for i in range(len(self.layers)):   
-            num_input = self.layers[i]
-            num_output = self.action_size if i == len(self.layers) - 1 else self.layers[i + 1] 
-            name = "input" if i == 0 else "output" if i == len(self.layers) else str(i + 1)
-            w_shape = [num_input, num_output]
-            b_shape = [num_output]
-            with tf.name_scope(name):
-                self.W = tf.Variable(self.initializer(w_shape), dtype=tf.float32, name = "W_{}".format(name))
-                self.b = tf.Variable(tf.zeros(b_shape, dtype=tf.float32), name = "b_{}".format(name))
+            for i in range(len(self.layers)):   
+                num_input = self.layers[i]
+                num_output = self.action_size if i == len(self.layers) - 1 else self.layers[i + 1] 
+                name = "input" if i == 0 else "output" if i == len(self.layers) else str(i + 1)
+                w_shape = [num_input, num_output]
+                b_shape = [num_output]
+                with tf.name_scope(name):
+                    self.W = tf.Variable(self.initializer(w_shape), dtype=tf.float32, name = "W_{}".format(name))
+                    self.b = tf.Variable(tf.zeros(b_shape, dtype=tf.float32), name = "b_{}".format(name))
 
-                self.neurons = tf.add(tf.matmul(self.neurons, self.W), self.b)
-                
-                tf.summary.histogram("weights", self.W)
-                tf.summary.histogram("biases", self.b)
-                tf.summary.histogram("activations", self.neurons)
+                    self.neurons = tf.add(tf.matmul(self.neurons, self.W), self.b)
+                    
+                    tf.summary.histogram("weights", self.W)
+                    tf.summary.histogram("biases", self.b)
+                    tf.summary.histogram("activations", self.neurons)
 
-                if i < len(self.layers) - 1:
-                    # Maybe dropout could be a good thing to add?
-                    self.neurons = tf.nn.relu(self.neurons)
-
-
-        self.logits = self.neurons
-
-        # Mean-Squared-Error
-        with tf.name_scope("accuracy"):
-            self.loss_op = tf.reduce_mean(tf.squared_difference(self.logits, self.Y_input))
-            tf.summary.scalar("accuracy", self.loss_op)
+                    if i < len(self.layers) - 1:
+                        # Maybe dropout could be a good thing to add?
+                        self.neurons = tf.nn.relu(self.neurons)
 
 
-        optimizer = tf.train.AdamOptimizer(learning_rate = self.learning_rate)
+            self.logits = self.neurons
 
-        with tf.name_scope("train"):
-            self.train_op = optimizer.minimize(self.loss_op)
+            # Mean-Squared-Error
+            with tf.name_scope("accuracy"):
+                self.loss_op = tf.reduce_mean(tf.squared_difference(self.logits, self.Y_input))
+                tf.summary.scalar("accuracy", self.loss_op)
 
-        self.summ = tf.summary.merge_all()
 
-        self.init = tf.global_variables_initializer()
+            optimizer = tf.train.AdamOptimizer(learning_rate = self.learning_rate)
+
+            with tf.name_scope("train"):
+                self.train_op = optimizer.minimize(self.loss_op)
+
+            self.summ = tf.summary.merge_all()
+
+            self.init = tf.global_variables_initializer()
 
 
     def remember(self, state, action, reward, next_state, done):

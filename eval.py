@@ -8,11 +8,11 @@ def main():
     nb_actions = 3
     obs_size = 9
     batch_size = 32
-    stock = "AAPL"
+    stock = "INTC"
     episode = 320
 
-    agent = Agent(obs_size, 10, nb_actions, 0.95, 1.0, 0.995, 0.01, 0.001, 1000, stock_name="AAPL", episode=episode, is_eval=True)
-    env = MarketEnv(stock, window_size=10 ,is_eval=True, train_test_split=0.8)
+    agent = Agent(obs_size, 10, nb_actions, 0.95, 1.0, 0.995, 0.01, 0.001, 1000, stock_name=stock, episode=episode, is_eval=True)
+    env = MarketEnv(stock, window_size=10 ,is_eval=True, train_test_split=.8)
 
 
     
@@ -31,11 +31,12 @@ def main():
     plt.plot(dates, prices)
 
     for line in env.buy:
-        plt.plot(line[0], line[1], 'ro', color="r", markersize=2)
+        plt.plot(line[0], line[1], 'ro', color="g", markersize=2)
 
     for line in env.sell:
-        plt.plot(line[0], line[1], "ro", color="g", markersize=2)
-
+        plt.plot(line[0], line[1], "ro", color="r", markersize=2)
+    print("Profitable Trades: " + str(env.profitable_trades))
+    print("UnProfitable Trades: " + str(env.unprofitable_trades))
     plt.show()
 
 main()

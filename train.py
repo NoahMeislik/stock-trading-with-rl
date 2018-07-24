@@ -8,11 +8,11 @@ def main():
     nb_actions = 3
     obs_size = 9
     batch_size = 32
-    stock = "AAPL"
+    stock = "INTC"
 
 
-    agent = Agent(obs_size, 10, nb_actions, 0.95, 1.0, 0.995, 0.01, 0.001, 1000, stock_name="AAPL")
-    env = MarketEnv(stock, window_size=10)
+    agent = Agent(obs_size, 10, nb_actions, 0.95, 1.0, 0.995, 0.01, 0.001, 1000, stock_name=stock)
+    env = MarketEnv(stock, window_size=10, train_test_split=.8)
 
 
     for i in range(500):
@@ -31,7 +31,6 @@ def main():
         model_name = "{}-{}".format(stock, str(i))
         path = "models/{}/{}/".format(stock, model_name)
 
-
         if not os.path.exists(path):
             os.makedirs(path)
 
@@ -39,10 +38,10 @@ def main():
             pass
             
         agent.saver.save(agent.sess, path + model_name, global_step = i)
-        print("\nEpisode" + str(i) + " finished")
+        print("\nEpisode " + str(i) + " finished")
         
 
-        if i % 499 == 0:
+        if i == 500:
             prices = [line[-2] for line in env.prices]
             dates = [i for i in range(len(env.prices))]
             plt.plot(dates, prices)

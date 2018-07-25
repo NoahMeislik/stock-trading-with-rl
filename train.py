@@ -8,11 +8,11 @@ def main():
     nb_actions = 3
     obs_size = 9
     batch_size = 32
-    stock = "INTC"
+    stock = "ADBE"
 
 
-    agent = Agent(obs_size, 10, nb_actions, 0.95, 1.0, 0.995, 0.01, 0.001, 1000, stock_name=stock)
-    env = MarketEnv(stock, window_size=10, train_test_split=.8)
+    agent = Agent(obs_size, 5, nb_actions, 0.95, 1.0, 0.995, 0.01, 0.001, 1000, stock_name=stock)
+    env = MarketEnv(stock, window_size = 5, train_test_split=.8)
 
 
     for i in range(500):
@@ -27,6 +27,8 @@ def main():
             state = next_state
             if len(agent.memory) > batch_size:
                 agent.replay(batch_size, time, i)
+                if i % 10 == 0:
+                    agent.q_values.append(agent.target)
 
         model_name = "{}-{}".format(stock, str(i))
         path = "models/{}/{}/".format(stock, model_name)
@@ -53,6 +55,8 @@ def main():
                 plt.plot(line[0], line[1], "ro", color="g", markersize=2)
 
             plt.show()
+
+            plt.plot(agent.q_values)
 
 main()
 

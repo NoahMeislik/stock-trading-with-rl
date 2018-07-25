@@ -52,51 +52,29 @@ class Agent(Agent):
         """
         # (1,10,9)
         with tf.device("/device:GPU:0"):
-            self.X_input = tf.placeholder(tf.float32, shape=(None))
-            self.Y_input = tf.placeholder(tf.float32, shape=(None))
-            # self.dropout_keep_prob = tf.placeholder(tf.float32) For dropout
+            X = tf.placeholder(tf.float32, [None, n_steps, n_inputs])
+            y = tf.placeholder(tf.int32, [None])
 
-            # Can be changed to another initializer
-            self.initializer = tf.initializers.truncated_normal(seed=1)
+            lstm_cells = [tf.contrib.rnn.BasicLSTMCell(num_units=n_neurons)
+                        for layer in range(n_layers)]
 
-            self.neurons = self.X_input
+            #lstm_cell = tf.contrib.rnn.LSTMCell(num_units=n_neurons, use_peepholes=True)
+            #gru_cell = tf.contrib.rnn.GRUCell(num_units=n_neurons)
 
-            for i in range(len(self.layers)):   
-                num_input = self.layers[i]
-                num_output = self.action_size if i == len(self.layers) - 1 else self.layers[i + 1] 
-                name = "input" if i == 0 else "output" if i == len(self.layers) else str(i + 1)
-                w_shape = [num_input, num_output]
-                b_shape = [num_output]
-                with tf.name_scope(name):
-                    self.W = tf.Variable(self.initializer(w_shape), dtype=tf.float32, name = "W_{}".format(name))
-                    self.b = tf.Variable(tf.zeros(b_shape, dtype=tf.float32), name = "b_{}".format(name))
+            multi_cell = tf.contrib.rnn.MultiRNNCell(lstm_cells)
+            outputs, states = tf.nn.dynamic_rnn(multi_cell, X, dtype=tf.float32)
+            top_layer_h_state = states[-1][1]
+            logits = tf.layers.dense(top_layer_h_state, n_outputs, name="softmax")
+            xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y, logits=logits)
+            loss = tf.reduce_mean(xentropy, name="loss")
+            optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+            training_op = optimizer.minimize(loss)
+            correct = tf.nn.in_top_k(logits, y, 1)
+            accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
 
-                    self.neurons = tf.add(tf.matmul(self.neurons, self.W), self.b)
-                    
-                    tf.summary.histogram("weights", self.W)
-                    tf.summary.histogram("biases", self.b)
-                    tf.summary.histogram("activations", self.neurons)
-
-                    if i < len(self.layers) - 1:
-                        # Maybe dropout could be a good thing to add?
-                        self.neurons = tf.nn.relu(self.neurons)
-
-
-            self.logits = self.neurons
-
-            # Mean-Squared-Error
-            with tf.name_scope("accuracy"):
-                self.loss_op = tf.reduce_mean(tf.squared_difference(self.logits, self.Y_input))
-                tf.summary.scalar("accuracy", self.loss_op)
-
-
-            optimizer = tf.train.RMSPropOptimizer(learning_rate = self.learning_rate, decay=.99)
-
-            with tf.name_scope("train"):
-                self.train_op = optimizer.minimize(self.loss_op)
-
+            # Merge all of the summaries
             self.summ = tf.summary.merge_all()
-
+            # Initiate all vars
             self.init = tf.global_variables_initializer()
 
 

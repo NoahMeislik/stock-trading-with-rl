@@ -82,7 +82,7 @@ class MarketEnv():
         if self.done:
             raise ValueError("Done, call reset to start again!")
         
-        if action == 1: # buy
+        if action == 1 and self.account_balance > 0 + self.prices[time][-2]: # buy
             self.inventory.append(self.prices[time][-2]) # Change -2 to wherever the close is
             self.account_balance -= self.prices[time][-2]
             print("Buy: " + str(self.prices[time][-2]))

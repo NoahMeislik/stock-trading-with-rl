@@ -3,7 +3,7 @@ import math
 import pandas as pd
 
 def getStockDataVec(key):
-	data = pd.read_csv("data/" + key + ".csv", sep=",", names=["Date", "Time", "Open", "High", "Low", "close", "Volume"])
+	data = pd.read_csv("data/" + key + ".csv", sep=",", names=["Open", "High", "Low", "close", "Volume"])
 	return data
 
 def sigmoid(x):

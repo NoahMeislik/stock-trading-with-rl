@@ -30,7 +30,7 @@ class Agent(Agent):
         self.stock_name = stock_name
         self.q_values = []
 
-        self.layers = [self.state_size, 64, 32, 8]
+        self.layers = [150, 150, 150]
         tf.reset_default_graph()
         self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement = True))
         self.memory = deque(maxlen=2000)
@@ -52,25 +52,31 @@ class Agent(Agent):
         """
         # (1,10,9)
         with tf.device("/device:GPU:0"):
-            X = tf.placeholder(tf.float32, [None, n_steps, n_inputs])
-            y = tf.placeholder(tf.int32, [None])
 
-            lstm_cells = [tf.contrib.rnn.BasicLSTMCell(num_units=n_neurons)
-                        for layer in range(n_layers)]
+            with tf.name_scope("Inputs"):
+                self.X_input = tf.placeholder(tf.float32, [None, self.state_size, 1])
+                self.Y_input = tf.placeholder(tf.float32, [self.window_size, self.action_size])
+
+            self.lstm_cells = [tf.contrib.rnn.BasicLSTMCell(num_units=self.layers[layer])
+                        for layer in range(len(self.layers))]
 
             #lstm_cell = tf.contrib.rnn.LSTMCell(num_units=n_neurons, use_peepholes=True)
             #gru_cell = tf.contrib.rnn.GRUCell(num_units=n_neurons)
 
-            multi_cell = tf.contrib.rnn.MultiRNNCell(lstm_cells)
-            outputs, states = tf.nn.dynamic_rnn(multi_cell, X, dtype=tf.float32)
-            top_layer_h_state = states[-1][1]
-            logits = tf.layers.dense(top_layer_h_state, n_outputs, name="softmax")
-            xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=y, logits=logits)
-            loss = tf.reduce_mean(xentropy, name="loss")
-            optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-            training_op = optimizer.minimize(loss)
-            correct = tf.nn.in_top_k(logits, y, 1)
-            accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
+            self.multi_cell = tf.contrib.rnn.MultiRNNCell(self.lstm_cells)
+            self.outputs, self.states = tf.nn.dynamic_rnn(self.multi_cell, self.X_input, dtype=tf.float32)
+            self.top_layer_h_state = self.states[-1][1]
+
+            with tf.name_scope("Output"):
+                self.logits = tf.layers.dense(self.top_layer_h_state, self.action_size, name="softmax")
+
+            with tf.name_scope("Cross_Entropy"):
+                self.loss_op = tf.reduce_mean(tf.squared_difference(self.logits, self.Y_input))
+                self.optimizer = tf.train.RMSPropOptimizer(learning_rate=self.learning_rate)
+                self.train_op = self.optimizer.minimize(self.loss_op)
+            # self.correct = tf.nn.in_top_k(self.logits, self.Y_input, 1)
+
+            # self.accuracy = tf.reduce_mean(tf.cast(self., tf.float32))
 
             # Merge all of the summaries
             self.summ = tf.summary.merge_all()
@@ -100,7 +106,7 @@ class Agent(Agent):
                 self.target = reward + self.gamma * np.amax(self.sess.run(self.logits, feed_dict = {self.X_input: next_state})[0])
             target_f = self.sess.run(self.logits, feed_dict={self.X_input: state})
             target_f[0][action] = self.target
-            _, c, s = self.sess.run([self.train_op, self.loss_op, self.summ], feed_dict={self.X_input: state, self.Y_input: target_f}) # Add self.summ into the sess.run for tensorboard
+            _, c = self.sess.run([self.train_op, self.loss_op], feed_dict={self.X_input: state, self.Y_input: target_f}) # Add self.summ into the sess.run for tensorboard
             # self.writer.add_summary(s, (episode + 1) * time)
 
         if self.epsilon > self.epsilon_min:

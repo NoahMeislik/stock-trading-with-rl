@@ -120,8 +120,9 @@ class Agent(Agent):
             target = reward
             if not done:
                 self.target = reward + self.gamma * np.amax(self.sess.run(self.logits, feed_dict = {self.X_input: next_state})[0])
+                
             target_f = self.sess.run(self.logits, feed_dict={self.X_input: state})
-            target_f[0][action] = self.target
+            target_f[0][action] = target
             _, c, s = self.sess.run([self.train_op, self.loss_op, self.summ], feed_dict={self.X_input: state, self.Y_input: target_f}) # Add self.summ into the sess.run for tensorboard
             # self.writer.add_summary(s, (episode + 1) * time)
 

@@ -1,18 +1,18 @@
 from env import MarketEnv
-from agents.DQN import Agent
+from agents.LSTM import Agent
 import matplotlib.pyplot as plt
 import datetime
 import os
 
 def main():
     nb_actions = 3
-    obs_size = 9
+    obs_size = 7
     batch_size = 32
-    stock = "ADBE"
+    stock = "WTW"
 
 
-    agent = Agent(obs_size, 5, nb_actions, 0.95, 1.0, 0.995, 0.01, 0.001, 1000, stock_name=stock)
-    env = MarketEnv(stock, window_size = 5, train_test_split=.8)
+    agent = Agent(obs_size, 5, nb_actions, 0.95, 1.0, 0.99, 0.01, 0.001, 1000, stock_name=stock)
+    env = MarketEnv(stock, window_size = 5, state_size=obs_size, train_test_split=.8)
 
 
     for i in range(500):
@@ -54,9 +54,13 @@ def main():
             for line in env.sell:
                 plt.plot(line[0], line[1], "ro", color="g", markersize=2)
 
+            plt.plot(agent.q_values)
+
             plt.show()
 
             plt.plot(agent.q_values)
+
+            plt.show()
 
 main()
 

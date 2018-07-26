@@ -6,10 +6,10 @@ import os
 
 def main():
     nb_actions = 3
-    obs_size = 9
+    obs_size = 7
     batch_size = 32
-    stock = "ADBE"
-    episode = 55
+    stock = "WTW"
+    episode = 300
 
     agent = Agent(obs_size, 5, nb_actions, 0.95, 1.0, 0.995, 0.01, 0.001, 1000, stock_name=stock, episode=episode, is_eval=True)
     env = MarketEnv(stock, window_size=5 ,is_eval=True, train_test_split=.8)

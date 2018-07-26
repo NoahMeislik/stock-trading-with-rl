@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 
 class MarketEnv():
-    def __init__(self, stock_name, window_size = 1, account_balance = 100000, train_test_split = None, print_report = True, is_eval = False):
+    def __init__(self, stock_name, window_size = 1, state_size = 7, account_balance = 100000, train_test_split = None, print_report = True, is_eval = False):
         """
         stock_name: Symbol of stock being examined
         window_size: Number of days being represented in each state (current place in time - number of days)
@@ -13,6 +13,7 @@ class MarketEnv():
         """
         self.stock_name = stock_name
         self.window_size = window_size
+        self.state_size = state_size
         self.starting_balance = account_balance
         self.account_balance = account_balance
         self.train_test_split = train_test_split
@@ -66,16 +67,16 @@ class MarketEnv():
             for i in range(len(self.state)):
                 self.state[i].append(self.unrealized_gain)
                 self.state[i].append(self.account_balance)
+            self.state = np.array(self.state).reshape(self.window_size, self.state_size, 1)
             
-            self.state = np.array(self.state)
+
             return self.state
         if self.is_eval:
             self.state = getState(self.test, 0, self.window_size).tolist()
             for i in range(len(self.state)):
                 self.state[i].append(self.unrealized_gain)
                 self.state[i].append(self.account_balance)
-            
-            self.state = np.array(self.state)
+            self.state = np.array(self.state).reshape(self.window_size, self.state_size, 1)
             return self.state
 
     def step(self, action, time):
@@ -116,7 +117,7 @@ class MarketEnv():
                 self.state[i].append(self.unrealized_gain)
                 self.state[i].append(self.account_balance)
                 # Fix this so the array is 10 days worth of 9 info each
-            self.state = np.array(self.state)
+            self.state = np.array(self.state).reshape(self.window_size, self.state_size, 1)
 
         if self.is_eval:
             self.unrealized_gain = self.test[time][-2] - self.inventory[0] if len(self.inventory) > 0 else 0.
@@ -125,7 +126,7 @@ class MarketEnv():
                 self.state[i].append(self.unrealized_gain)
                 self.state[i].append(self.account_balance)
                 # Fix this so the array is 10 days worth of 9 info each
-            self.state = np.array(self.state)
+            self.state = np.array(self.state).reshape(self.window_size, self.state_size, 1)
 
         return self.state, int(self.action), self.reward, self.done
 		

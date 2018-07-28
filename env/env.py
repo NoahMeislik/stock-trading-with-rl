@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import MinMaxScaler
 
 class MarketEnv():
-    def __init__(self, stock_name, window_size = 1, state_size = 7, account_balance = 100000, train_test_split = None, print_report = True, is_eval = False):
+    def __init__(self, stock_name, window_size = 1, state_size = 7, account_balance = 100000, shares_to_buy = 1, train_test_split = None, print_report = True, is_eval = False):
         """
         stock_name: Symbol of stock being examined
         window_size: Number of days being represented in each state (current place in time - number of days)
@@ -16,6 +16,7 @@ class MarketEnv():
         self.state_size = state_size
         self.starting_balance = account_balance
         self.account_balance = account_balance
+        self.shares_to_buy = shares_to_buy
         self.train_test_split = train_test_split
         self.print_report = print_report
         self.inventory = []
@@ -67,7 +68,7 @@ class MarketEnv():
             for i in range(len(self.state)):
                 self.state[i].append(self.unrealized_gain)
                 self.state[i].append(self.account_balance)
-            self.state = np.array(self.state).reshape(self.window_size, self.state_size, 1)
+            self.state = np.array(self.state).reshape( self.window_size, self.state_size)
             
 
             return self.state
@@ -76,30 +77,33 @@ class MarketEnv():
             for i in range(len(self.state)):
                 self.state[i].append(self.unrealized_gain)
                 self.state[i].append(self.account_balance)
-            self.state = np.array(self.state).reshape(self.window_size, self.state_size, 1)
+            self.state = np.array(self.state).reshape( self.window_size, self.state_size)
             return self.state
 
     def step(self, action, time):
         if self.done:
             raise ValueError("Done, call reset to start again!")
-        
-        if action == 1 and self.account_balance > 0 + self.prices[time][-2]: # buy
-            self.inventory.append(self.prices[time][-2]) # Change -2 to wherever the close is
-            self.account_balance -= self.prices[time][-2]
-            print("Buy: " + str(self.prices[time][-2]))
+        if action == 0:
+            self.reward = 1
+
+        if action == 1 and self.account_balance > 0 + self.prices[time][-2] and len(self.inventory) <= 10: # buy
+            self.inventory.append(self.prices[time][-2] * self.shares_to_buy) # Change -2 to wherever the close is
+            self.account_balance -= self.prices[time][-2]  * self.shares_to_buy
+            print("Buy: " + str(self.prices[time][-2]  * self.shares_to_buy))
             self.buy.append((time, self.prices[time][-2]))
-            
+            self.reward = 1
 
         elif action == 2 and len(self.inventory) > 0:
             bought_price = self.inventory.pop(0)
-            self.reward = max(self.prices[time][-2] - bought_price, 0)
-            if self.prices[time][-2] - bought_price > 0:
+            if self.prices[time][-2]  * self.shares_to_buy - bought_price > 0:
                 self.profitable_trades += 1
+                self.reward = max(self.prices[time][-2] * self.shares_to_buy - bought_price, 1) # Change to 0 to reset to normal
             else:
                 self.unprofitable_trades += 1
-            self.episode_profit += self.prices[time][-2] - bought_price
-            self.account_balance += self.prices[time][-2]
-            print("Sell: " + str(self.prices[time][-2]) + " | Profit: " + str(self.prices[time][-2] - bought_price))
+                self.reward = 0
+            self.episode_profit += self.prices[time][-2] * self.shares_to_buy - bought_price
+            self.account_balance += self.prices[time][-2]  * self.shares_to_buy
+            print("Sell: " + str(self.prices[time][-2]  * self.shares_to_buy) + " | Profit: " + str(self.prices[time][-2]  * self.shares_to_buy - bought_price))
             self.sell.append((time, self.prices[time][-2]))
 
         self.done = True if time == self.l - 1 else False
@@ -111,24 +115,24 @@ class MarketEnv():
             print("--------------------------------")
 
         if not self.is_eval:
-            self.unrealized_gain = self.train[time][-2] - self.inventory[0] if len(self.inventory) > 0 else 0.
+            self.unrealized_gain = self.train[time][-2]  * self.shares_to_buy - self.inventory[0] if len(self.inventory) > 0 else 0.
             self.state = getState(self.train, time, self.window_size).tolist()
             for i in range(len(self.state)):
                 self.state[i].append(self.unrealized_gain)
                 self.state[i].append(self.account_balance)
                 # Fix this so the array is 10 days worth of 9 info each
-            self.state = np.array(self.state).reshape(self.window_size, self.state_size, 1)
+            self.state = np.array(self.state).reshape( self.window_size, self.state_size)
 
         if self.is_eval:
-            self.unrealized_gain = self.test[time][-2] - self.inventory[0] if len(self.inventory) > 0 else 0.
+            self.unrealized_gain = self.test[time][-2]  * self.shares_to_buy - self.inventory[0] if len(self.inventory) > 0 else 0.
             self.state = getState(self.test, time, self.window_size).tolist()
             for i in range(len(self.state)):
                 self.state[i].append(self.unrealized_gain)
                 self.state[i].append(self.account_balance)
                 # Fix this so the array is 10 days worth of 9 info each
-            self.state = np.array(self.state).reshape(self.window_size, self.state_size, 1)
+            self.state = np.array(self.state).reshape( self.window_size, self.state_size)
 
-        return self.state, int(self.action), self.reward, self.done
+        return self.state, int(action), self.reward, self.done
 		
 
 

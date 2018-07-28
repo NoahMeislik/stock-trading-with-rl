@@ -5,7 +5,7 @@ from collections import deque
 from .agent import Agent
 
 class Agent(Agent):
-    def __init__(self, state_size, window_size, action_size, gamma, epsilon, epsilon_decay, epsilon_min, learning_rate, episodes, is_eval=False, model_name="", stock_name="", episode=1):
+    def __init__(self, state_size, window_size, action_size, gamma, epsilon, epsilon_decay, epsilon_min, learning_rate, episodes, batch_size = 32, is_eval=False, model_name="", stock_name="", episode=1):
         """
         state_size: Size of the state coming from the environment
         action_size: How many decisions the algo will make in the end
@@ -35,14 +35,15 @@ class Agent(Agent):
         self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement = True))
         self.memory = deque(maxlen=2000)
         if self.is_eval:
+            self._model_init()
             model_name = stock_name + "-" + str(episode)
-            self.saver = tf.train.import_meta_graph("models/{}/{}/{}".format(stock_name, model_name, model_name + "-" + str(episode) + ".meta"))
-            self.saver.restore(self.sess, "models/{}/{}/{}".format(stock_name, model_name, model_name + "-" + str(episode)))
+            self.saver = tf.train.Saver()
+            self.saver.restore(self.sess, tf.train.latest_checkpoint("models/{}/{}".format(stock_name, model_name)))
         else:
             self._model_init()
             self.saver = tf.train.Saver()
             self.sess.run(self.init)
-            path = "tmp/{}/1".format(self.stock_name)
+            path = "models/{}/1".format(self.stock_name)
             self.writer = tf.summary.FileWriter(path)
             self.writer.add_graph(self.sess.graph)
 
@@ -104,7 +105,7 @@ class Agent(Agent):
         self.memory.append((state, action, reward, next_state, done))
 
     def act(self, state):
-        if np.random.rand() <= self.epsilon:
+        if np.random.rand() <= self.epsilon and not self.is_eval:
             return random.randrange(self.action_size)
         act_values = self.sess.run(self.logits, feed_dict={self.X_input: state})
         return np.argmax(act_values[0])
@@ -124,7 +125,7 @@ class Agent(Agent):
             target_f = self.sess.run(self.logits, feed_dict={self.X_input: state})
             target_f[0][action] = target
             _, c, s = self.sess.run([self.train_op, self.loss_op, self.summ], feed_dict={self.X_input: state, self.Y_input: target_f}) # Add self.summ into the sess.run for tensorboard
-            # self.writer.add_summary(s, (episode + 1) * time)
+            self.writer.add_summary(s, (episode + 1) * time)
 
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay 

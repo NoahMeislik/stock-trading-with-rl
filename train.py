@@ -7,43 +7,47 @@ import os
 def main():
     nb_actions = 3
     obs_size = 7
-    batch_size = 32
+    batch_size = 256
     stock = "WTW"
 
 
-    agent = Agent(obs_size, 5, nb_actions, 0.95, 1.0, 0.99, 0.01, 0.001, 1000, stock_name=stock)
-    env = MarketEnv(stock, window_size = 5, state_size=obs_size, train_test_split=.8)
+    agent = Agent(state_size=obs_size, window_size=1, action_size=nb_actions, batch_size=batch_size, gamma=0.7, epsilon=.95, epsilon_decay=0.95, epsilon_min=0.01, learning_rate=0.0001, stock_name=stock)
+    env = MarketEnv(stock, window_size = 1, state_size=obs_size, shares_to_buy = 1, train_test_split=.8)
 
 
-    for i in range(500):
+    for i in range(2000):
         state = env.reset()
 
         for time in range(env.l):
+            if time % 100 == 0:
+                print(time)
             action = agent.act(state)
 
             next_state, action, reward, done = env.step(action, time)
 
             agent.remember(state, action, reward, next_state, done)
             state = next_state
-            if len(agent.memory) > batch_size:
-                agent.replay(batch_size, time, i)
+            if len(agent.memory) % batch_size == 0:
+                
+                agent.replay(time, i)
                 if i % 10 == 0:
                     agent.q_values.append(agent.target)
 
         model_name = "{}-{}".format(stock, str(i))
         path = "models/{}/{}/".format(stock, model_name)
 
-        if not os.path.exists(path):
-            os.makedirs(path)
+        if i % 5 == 0:    
+            if not os.path.exists(path):
+                os.makedirs(path)
 
-        with open(os.path.join(path, 'LTYP.mif'), 'w'):
-            pass
-            
-        agent.saver.save(agent.sess, path + model_name, global_step = i)
+            with open(os.path.join(path, 'LTYP.mif'), 'w'):
+                pass
+            agent.saver.save(agent.sess, path + model_name, global_step = i)
+
         print("\nEpisode " + str(i) + " finished")
         
 
-        if i == 500:
+        if i == 2000:
             prices = [line[-2] for line in env.prices]
             dates = [i for i in range(len(env.prices))]
             plt.plot(dates, prices)

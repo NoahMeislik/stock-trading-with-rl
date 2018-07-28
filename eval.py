@@ -1,5 +1,5 @@
 from env import MarketEnv
-from agents.DQN import Agent
+from agents.LSTM import Agent
 import matplotlib.pyplot as plt
 import datetime
 import os
@@ -7,12 +7,13 @@ import os
 def main():
     nb_actions = 3
     obs_size = 7
-    batch_size = 32
+    window_size = 5
+    batch_size = 256
     stock = "WTW"
-    episode = 300
+    episode = 20
 
-    agent = Agent(obs_size, 5, nb_actions, 0.95, 1.0, 0.995, 0.01, 0.001, 1000, stock_name=stock, episode=episode, is_eval=True)
-    env = MarketEnv(stock, window_size=5 ,is_eval=True, train_test_split=.8)
+    agent = Agent(state_size = obs_size, window_size = window_size, action_size = nb_actions, batch_size = batch_size, gamma=0.95, epsilon=1.0, epsilon_decay=0.995, epsilon_min=0.01, learning_rate=0.001, is_eval=True, stock_name=stock, episode=episode)
+    env = MarketEnv(stock, window_size=window_size, state_size = obs_size, is_eval=True, shares_to_buy = 1, train_test_split=.8)
 
 
     
@@ -20,7 +21,7 @@ def main():
 
     for time in range(env.l):
         action = agent.act(state)
-
+        
         next_state, action, reward, done = env.step(action, time)
 
         agent.remember(state, action, reward, next_state, done)

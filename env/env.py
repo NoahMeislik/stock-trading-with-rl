@@ -68,7 +68,7 @@ class MarketEnv():
             for i in range(len(self.state)):
                 self.state[i].append(self.unrealized_gain)
                 self.state[i].append(self.account_balance)
-            self.state = np.array(self.state).reshape( self.window_size, self.state_size)
+            self.state = np.array(self.state).reshape(self.state_size)
             
 
             return self.state
@@ -77,7 +77,7 @@ class MarketEnv():
             for i in range(len(self.state)):
                 self.state[i].append(self.unrealized_gain)
                 self.state[i].append(self.account_balance)
-            self.state = np.array(self.state).reshape( self.window_size, self.state_size)
+            self.state = np.array(self.state).reshape(self.state_size)
             return self.state
 
     def step(self, action, time):
@@ -121,7 +121,7 @@ class MarketEnv():
                 self.state[i].append(self.unrealized_gain)
                 self.state[i].append(self.account_balance)
                 # Fix this so the array is 10 days worth of 9 info each
-            self.state = np.array(self.state).reshape( self.window_size, self.state_size)
+            self.state = np.array(self.state).reshape(self.state_size)
 
         if self.is_eval:
             self.unrealized_gain = self.test[time][-2]  * self.shares_to_buy - self.inventory[0] if len(self.inventory) > 0 else 0.
@@ -130,7 +130,7 @@ class MarketEnv():
                 self.state[i].append(self.unrealized_gain)
                 self.state[i].append(self.account_balance)
                 # Fix this so the array is 10 days worth of 9 info each
-            self.state = np.array(self.state).reshape( self.window_size, self.state_size)
+            self.state = np.array(self.state).reshape(self.state_size)
 
         return self.state, int(action), self.reward, self.done
 		

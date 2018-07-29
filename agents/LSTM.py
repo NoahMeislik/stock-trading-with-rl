@@ -84,9 +84,11 @@ class Agent(Agent):
             #     self.out_bias=tf.Variable(tf.zeros([self.action_size]))
             #     self.logits = tf.add(tf.matmul(self.top_layer_h_state,self.out_weights), self.out_bias)
 
-            fc1 = tf.layers.dense(self.X_input, 50, activation=tf.nn.relu)
-            fc2 = tf.layers.dense(fc1, 50, activation=tf.nn.relu)
-            self.logits = tf.layers.dense(fc2, self.action_size)
+            fc1 = tf.contrib.layers.fully_connected(self.X_input, 512, activation_fn=tf.nn.relu)
+            fc2 = tf.contrib.layers.fully_connected(fc1, 512, activation_fn=tf.nn.relu)
+            fc3 = tf.contrib.layers.fully_connected(fc2, 512, activation_fn=tf.nn.relu)
+            fc4 = tf.contrib.layers.fully_connected(fc3, 512, activation_fn=tf.nn.relu)
+            self.logits = tf.contrib.layers.fully_connected(fc4, self.action_size, activation_fn=None)
 
             with tf.name_scope("Cross_Entropy"):
                 self.loss_op = tf.losses.mean_squared_error(self.Y_input,self.logits)
@@ -96,6 +98,7 @@ class Agent(Agent):
 
             # self.accuracy = tf.reduce_mean(tf.cast(self., tf.float32))
             tf.summary.scalar("Reward", tf.reduce_mean(self.rewards))
+            tf.summary.scalar("MSE", self.loss_op)
             # Merge all of the summaries
             self.summ = tf.summary.merge_all()
             self.init = tf.global_variables_initializer()
@@ -105,11 +108,14 @@ class Agent(Agent):
 
     def act(self, state):
         if np.random.rand() <= self.epsilon and not self.is_eval:
-            print("Rando")
-            return random.randrange(self.action_size)
-        print("not rando")
-        act_values = self.sess.run(self.logits, feed_dict={self.X_input: state})
+            prediction = random.randrange(self.action_size)
+            if prediction == 1 or prediction == 2:
+                print("Random")
+            return prediction
         
+        act_values = self.sess.run(self.logits, feed_dict={self.X_input: state.reshape((1, self.state_size))})
+        if np.argmax(act_values[0]) == 1 or np.argmax(act_values[0]) == 2:
+            pass
         return np.argmax(act_values[0])
 
     def replay(self, time, episode):
@@ -125,12 +131,12 @@ class Agent(Agent):
         for i, (state, action, reward, next_state, done) in enumerate(mini_batch):
             target = reward
             if not done:
-                self.target = reward + self.gamma * np.amax(self.sess.run(self.logits, feed_dict = {self.X_input: next_state})[0])
-            current_q = (self.sess.run(self.logits, feed_dict={self.X_input: state}))
-            
+                self.target = reward + self.gamma * np.amax(self.sess.run(self.logits, feed_dict = {self.X_input: next_state.reshape((1, self.state_size))})[0])
+            current_q = (self.sess.run(self.logits, feed_dict={self.X_input: state.reshape((1, self.state_size))}))
+
             current_q[0][action] = self.target
             x[i] = state
-            y[i] = current_q
+            y[i] = current_q.reshape((self.action_size))
             mean_reward.append(self.target)
         
         #target_f = np.array(target_f).reshape(self.batch_size - 1, self.action_size)

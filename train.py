@@ -11,11 +11,11 @@ def main():
     stock = "WTW"
 
 
-    agent = Agent(state_size=obs_size, window_size=1, action_size=nb_actions, batch_size=batch_size, gamma=0.7, epsilon=.95, epsilon_decay=0.95, epsilon_min=0.01, learning_rate=0.0001, stock_name=stock)
+    agent = Agent(state_size=obs_size, window_size=1, action_size=nb_actions, batch_size=batch_size, gamma=0.8, epsilon=.9, epsilon_decay=0.95, epsilon_min=0.001, learning_rate=0.001, stock_name=stock)
     env = MarketEnv(stock, window_size = 1, state_size=obs_size, shares_to_buy = 1, train_test_split=.8)
 
 
-    for i in range(2000):
+    for i in range(5000):
         state = env.reset()
 
         for time in range(env.l):

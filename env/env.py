@@ -2,7 +2,7 @@ import numpy
 import math
 from utils.utils import *
 import matplotlib.pyplot as plt
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import StandardScaler
 
 class MarketEnv():
     def __init__(self, stock_name, window_size = 1, state_size = 7, account_balance = 100000, shares_to_buy = 1, train_test_split = None, print_report = True, is_eval = False):
@@ -29,7 +29,7 @@ class MarketEnv():
         self.l = len(self.train) - 1 - self.window_size if not self.is_eval else len(self.test) - 1 - self.window_size
 
     def _get_data(self):
-        scaler = MinMaxScaler() # Normalize time series data
+        scaler = StandardScaler() # Normalize time series data
         data = getStockDataVec(self.stock_name)
         size = data.values.shape[0] # Shape (x, y) x is num_examples y is data in each example
         if self.train_test_split == None:
@@ -64,20 +64,13 @@ class MarketEnv():
         self.unprofitable_trades = 0
 
         if not self.is_eval:
-            self.state = getState(self.train, 0, self.window_size).tolist()
-            for i in range(len(self.state)):
-                self.state[i].append(self.unrealized_gain)
-                self.state[i].append(self.account_balance)
-            self.state = np.array(self.state).reshape(self.state_size)
+            self.state = getState(self.train, 0, self.window_size, self.unrealized_gain, self.account_balance).reshape(1, self.window_size, self.state_size)
             
 
             return self.state
         if self.is_eval:
-            self.state = getState(self.test, 0, self.window_size).tolist()
-            for i in range(len(self.state)):
-                self.state[i].append(self.unrealized_gain)
-                self.state[i].append(self.account_balance)
-            self.state = np.array(self.state).reshape(self.state_size)
+            self.state = getState(self.test, 0, self.window_size, self.unrealized_gain, self.account_balance).reshape(1, self.window_size, self.state_size)
+
             return self.state
 
     def step(self, action, time):
@@ -115,22 +108,12 @@ class MarketEnv():
             print("--------------------------------")
 
         if not self.is_eval:
-            self.unrealized_gain = self.train[time][-2]  * self.shares_to_buy - self.inventory[0] if len(self.inventory) > 0 else 0.
-            self.state = getState(self.train, time, self.window_size).tolist()
-            for i in range(len(self.state)):
-                self.state[i].append(self.unrealized_gain)
-                self.state[i].append(self.account_balance)
-                # Fix this so the array is 10 days worth of 9 info each
-            self.state = np.array(self.state).reshape(self.state_size)
-
+            self.unrealized_gain = self.train[time][-2]  * self.shares_to_buy - self.inventory[0] if len(self.inventory) > 0 else 0.            
+            self.state = getState(self.train, time, self.window_size, self.unrealized_gain, self.account_balance).reshape(1, self.window_size, self.state_size)
         if self.is_eval:
             self.unrealized_gain = self.test[time][-2]  * self.shares_to_buy - self.inventory[0] if len(self.inventory) > 0 else 0.
-            self.state = getState(self.test, time, self.window_size).tolist()
-            for i in range(len(self.state)):
-                self.state[i].append(self.unrealized_gain)
-                self.state[i].append(self.account_balance)
-                # Fix this so the array is 10 days worth of 9 info each
-            self.state = np.array(self.state).reshape(self.state_size)
+            self.state = getState(self.test, time, self.window_size, self.unrealized_gain, self.account_balance).reshape(1, self.window_size, self.state_size)
+
 
         return self.state, int(action), self.reward, self.done
 		

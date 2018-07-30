@@ -6,13 +6,13 @@ import os
 
 def main():
     nb_actions = 3
-    obs_size = 7
+    obs_size = 5
     window_size = 1
     batch_size = 256
     stock = "WTW"
-    episode = 20
+    episode = 105
 
-    agent = Agent(state_size = obs_size, window_size = window_size, action_size = nb_actions, batch_size = batch_size, gamma=0.95, epsilon=1.0, epsilon_decay=0.995, epsilon_min=0.01, learning_rate=0.001, is_eval=True, stock_name=stock, episode=episode)
+    agent = Agent(state_size = obs_size, window_size = window_size, action_size = nb_actions, batch_size = batch_size, gamma=0.95, epsilon=1.0, epsilon_decay=0.95, epsilon_min=0.01, learning_rate=0.001, is_eval=True, stock_name=stock, episode=episode)
     env = MarketEnv(stock, window_size=window_size, state_size = obs_size, is_eval=True, shares_to_buy = 1, train_test_split=None)
 
 

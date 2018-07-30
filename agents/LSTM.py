@@ -5,7 +5,7 @@ from collections import deque
 from .agent import Agent
 
 class Agent(Agent):
-    def __init__(self, state_size = 7, window_size = 1, action_size = 3, batch_size = 32, gamma=.95, epsilon=.95, epsilon_decay=.95, epsilon_min=.01, learning_rate=.001, is_eval=False, model_name="", stock_name="", episode=1):
+    def __init__(self, state_size = 7, window_size = 1, action_size = 3, batch_size = 32, gamma=.001, epsilon=.9, epsilon_decay=.95, epsilon_min=.01, learning_rate=.001, is_eval=False, model_name="", stock_name="", episode=1):
         """
         state_size: Size of the state coming from the environment
         action_size: How many decisions the algo will make in the end
@@ -64,8 +64,8 @@ class Agent(Agent):
         with tf.device("/device:GPU:0"):
 
             with tf.name_scope("Inputs"):
-                self.X_input = tf.placeholder(tf.float32, [None, self.state_size], name="Inputs")
-                self.Y_input = tf.placeholder(tf.float32, [None, self.action_size], name="Actions")
+                self.X_input = tf.placeholder(tf.float32, [None, self.window_size, self.state_size], name="Inputs")
+                self.Y_input = tf.placeholder(tf.float32, [None, 1, self.action_size], name="Actions")
                 self.rewards = tf.placeholder(tf.float32, [None, ], name="Rewards")
 
             # self.lstm_cells = [tf.contrib.rnn.GRUCell(num_units=layer)
@@ -109,13 +109,11 @@ class Agent(Agent):
     def act(self, state):
         if np.random.rand() <= self.epsilon and not self.is_eval:
             prediction = random.randrange(self.action_size)
-            if prediction == 1 or prediction == 2:
-                print("Random")
             return prediction
         
-        act_values = self.sess.run(self.logits, feed_dict={self.X_input: state.reshape((1, self.state_size))})
+        act_values = self.sess.run(self.logits, feed_dict={self.X_input: state})
         if np.argmax(act_values[0]) == 1 or np.argmax(act_values[0]) == 2:
-            pass
+            print("Not Random")
         return np.argmax(act_values[0])
 
     def replay(self, time, episode):
@@ -131,14 +129,15 @@ class Agent(Agent):
         for i, (state, action, reward, next_state, done) in enumerate(mini_batch):
             target = reward
             if not done:
-                self.target = reward + self.gamma * np.amax(self.sess.run(self.logits, feed_dict = {self.X_input: next_state.reshape((1, self.state_size))})[0])
-            current_q = (self.sess.run(self.logits, feed_dict={self.X_input: state.reshape((1, self.state_size))}))
-
+                self.target = reward + self.gamma * np.amax(self.sess.run(self.logits, feed_dict = {self.X_input: next_state})[0])
+            current_q = self.sess.run(self.logits, feed_dict={self.X_input: state})[0]
+            
             current_q[0][action] = self.target
             x[i] = state
-            y[i] = current_q.reshape((self.action_size))
+            y[i] = current_q
             mean_reward.append(self.target)
-        
+        x = x.reshape(self.batch_size, self.window_size, self.state_size)
+        y = y.reshape(self.batch_size, 1, self.action_size)
         #target_f = np.array(target_f).reshape(self.batch_size - 1, self.action_size)
         #target_state = np.array(target_state).reshape(self.batch_size - 1, self.window_size, self.state_size)
         _, c, s = self.sess.run([self.train_op, self.loss_op, self.summ], feed_dict={self.X_input: x, self.Y_input: y, self.rewards: mean_reward}) # Add self.summ into the sess.run for tensorboard

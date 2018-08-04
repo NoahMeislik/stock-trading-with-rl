@@ -6,13 +6,14 @@ import os
 
 def main():
     nb_actions = 3
-    obs_size = 5
-    batch_size = 256
-    stock = "WTW"
+    obs_size = 9
+    window_size = 10
+    batch_size = 1024
+    stock = "AAPL"
 
 
-    agent = Agent(state_size=obs_size, window_size=1, action_size=nb_actions, batch_size=batch_size, gamma=0.5, epsilon=.9, epsilon_decay=0.95, epsilon_min=0.1, learning_rate=0.01, stock_name=stock)
-    env = MarketEnv(stock, window_size = 1, state_size=obs_size, shares_to_buy = 1, train_test_split=.8)
+    agent = Agent(state_size=obs_size, window_size=window_size, action_size=nb_actions, batch_size=batch_size, gamma=0.7, epsilon=.9, epsilon_decay=0.999, epsilon_min=0.01, learning_rate=0.01, dropout_keep_prob=0.8, stock_name=stock)
+    env = MarketEnv(stock, window_size = window_size, state_size=obs_size, shares_to_buy = 1, train_test_split=.8)
 
 
     for i in range(10000):
@@ -36,7 +37,7 @@ def main():
         model_name = "{}-{}".format(stock, str(i))
         path = "models/{}/{}/".format(stock, model_name)
 
-        if i % 50 == 0:    
+        if i % 5 == 0:    
             if not os.path.exists(path):
                 os.makedirs(path)
 

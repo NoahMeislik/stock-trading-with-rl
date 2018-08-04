@@ -1,0 +1,6 @@
+model_checkpoint_path: "WTW-2400-2400"
+all_model_checkpoint_paths: "..\\WTW-2200\\WTW-2200-2200"
+all_model_checkpoint_paths: "..\\WTW-2250\\WTW-2250-2250"
+all_model_checkpoint_paths: "..\\WTW-2300\\WTW-2300-2300"
+all_model_checkpoint_paths: "..\\WTW-2350\\WTW-2350-2350"
+all_model_checkpoint_paths: "WTW-2400-2400"

@@ -30,7 +30,7 @@ class MarketEnv():
 
     def _get_data(self):
         scaler = StandardScaler() # Normalize time series data
-        data = getStockDataVec(self.stock_name)
+        data = getStockDataVec(self.stock_name).fillna(0)
         size = data.values.shape[0] # Shape (x, y) x is num_examples y is data in each example
         if self.train_test_split == None:
             self.train = scaler.fit_transform(data.values)
@@ -79,25 +79,25 @@ class MarketEnv():
         if action == 0:
             self.reward = 1
 
-        if action == 1 and self.account_balance > 0 + self.prices[time][-2] and len(self.inventory) <= 10: # buy
-            self.inventory.append(self.prices[time][-2] * self.shares_to_buy) # Change -2 to wherever the close is
-            self.account_balance -= self.prices[time][-2]  * self.shares_to_buy
-            print("Buy: " + str(self.prices[time][-2]  * self.shares_to_buy))
-            self.buy.append((time, self.prices[time][-2]))
+        if action == 1 and self.account_balance > 0 + self.prices[time][3] and len(self.inventory) <= 10: # buy
+            self.inventory.append(self.prices[time][3] * self.shares_to_buy) # Change -2 to wherever the close is
+            self.account_balance -= self.prices[time][3]  * self.shares_to_buy
+            print("Buy: " + str(self.prices[time][3]  * self.shares_to_buy))
+            self.buy.append((time, self.prices[time][3]))
             self.reward = 1
 
         elif action == 2 and len(self.inventory) > 0:
             bought_price = self.inventory.pop(0)
-            if self.prices[time][-2]  * self.shares_to_buy - bought_price > 0:
+            if self.prices[time][3]  * self.shares_to_buy - bought_price > 0:
                 self.profitable_trades += 1
-                self.reward = max(self.prices[time][-2] * self.shares_to_buy - bought_price, 1) # Change to 0 to reset to normal
+                self.reward = max(self.prices[time][3] * self.shares_to_buy - bought_price, 1) # Change to 0 to reset to normal
             else:
                 self.unprofitable_trades += 1
                 self.reward = 0
-            self.episode_profit += self.prices[time][-2] * self.shares_to_buy - bought_price
-            self.account_balance += self.prices[time][-2]  * self.shares_to_buy
-            print("Sell: " + str(self.prices[time][-2]  * self.shares_to_buy) + " | Profit: " + str(self.prices[time][-2]  * self.shares_to_buy - bought_price))
-            self.sell.append((time, self.prices[time][-2]))
+            self.episode_profit += self.prices[time][3] * self.shares_to_buy - bought_price
+            self.account_balance += self.prices[time][3]  * self.shares_to_buy
+            print("Sell: " + str(self.prices[time][3]  * self.shares_to_buy) + " | Profit: " + str(self.prices[time][3]  * self.shares_to_buy - bought_price))
+            self.sell.append((time, self.prices[time][3]))
 
         self.done = True if time == self.l - 1 else False
 
@@ -108,10 +108,10 @@ class MarketEnv():
             print("--------------------------------")
 
         if not self.is_eval:
-            self.unrealized_gain = self.train[time][-2]  * self.shares_to_buy - self.inventory[0] if len(self.inventory) > 0 else 0.            
+            self.unrealized_gain = self.train[time][3]  * self.shares_to_buy - self.inventory[0] if len(self.inventory) > 0 else 0.            
             self.state = getState(self.train, time, self.window_size, self.unrealized_gain, self.account_balance).reshape(1, self.window_size, self.state_size)
         if self.is_eval:
-            self.unrealized_gain = self.test[time][-2]  * self.shares_to_buy - self.inventory[0] if len(self.inventory) > 0 else 0.
+            self.unrealized_gain = self.test[time][3]  * self.shares_to_buy - self.inventory[0] if len(self.inventory) > 0 else 0.
             self.state = getState(self.test, time, self.window_size, self.unrealized_gain, self.account_balance).reshape(1, self.window_size, self.state_size)
 
 

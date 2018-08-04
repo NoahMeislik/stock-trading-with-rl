@@ -5,7 +5,7 @@ from collections import deque
 from .agent import Agent
 
 class Agent(Agent):
-    def __init__(self, state_size = 7, window_size = 1, action_size = 3, batch_size = 32, gamma=.001, epsilon=.9, epsilon_decay=.95, epsilon_min=.01, learning_rate=.001, is_eval=False, model_name="", stock_name="", episode=1):
+    def __init__(self, state_size = 7, window_size = 1, action_size = 3, batch_size = 32, gamma=.001, epsilon=.9, epsilon_decay=.95, epsilon_min=.01, learning_rate=.001, dropout_keep_prob=0.8, is_eval=False, model_name="", stock_name="", episode=1):
         """
         state_size: Size of the state coming from the environment
         action_size: How many decisions the algo will make in the end
@@ -25,6 +25,7 @@ class Agent(Agent):
         self.epsilon_decay = epsilon_decay
         self.epsilon_min = epsilon_min
         self.learning_rate = learning_rate
+        self.dropout_keep_prob = dropout_keep_prob
         self.is_eval = is_eval
         self.model_name = model_name
         self.stock_name = stock_name
@@ -65,30 +66,21 @@ class Agent(Agent):
 
             with tf.name_scope("Inputs"):
                 self.X_input = tf.placeholder(tf.float32, [None, self.window_size, self.state_size], name="Inputs")
-                self.Y_input = tf.placeholder(tf.float32, [None, 1, self.action_size], name="Actions")
+                self.Y_input = tf.placeholder(tf.float32, [None, self.action_size], name="Actions")
                 self.rewards = tf.placeholder(tf.float32, [None, ], name="Rewards")
 
-            # self.lstm_cells = [tf.contrib.rnn.GRUCell(num_units=layer)
-            #             for layer in self.layers]
+            self.lstm_cells = [tf.nn.rnn_cell.DropoutWrapper(tf.contrib.rnn.GRUCell(num_units=layer), output_keep_prob=self.dropout_keep_prob) for layer in self.layers]
 
             #lstm_cell = tf.contrib.rnn.LSTMCell(num_units=n_neurons, use_peepholes=True)
             #gru_cell = tf.contrib.rnn.GRUCell(num_units=n_neurons)
 
-            # self.multi_cell = tf.contrib.rnn.MultiRNNCell(self.lstm_cells)
-            # self.outputs, self.states = tf.nn.dynamic_rnn(self.multi_cell, self.X_input, dtype=tf.float32)
-           
-            # self.top_layer_h_state = self.states[-1]
-
-            # with tf.name_scope("Output"):
-            #     self.out_weights=tf.Variable(tf.truncated_normal([self.layers[-1], self.action_size]))
-            #     self.out_bias=tf.Variable(tf.zeros([self.action_size]))
-            #     self.logits = tf.add(tf.matmul(self.top_layer_h_state,self.out_weights), self.out_bias)
-
-            fc1 = tf.contrib.layers.fully_connected(self.X_input, 512, activation_fn=tf.nn.relu)
-            fc2 = tf.contrib.layers.fully_connected(fc1, 512, activation_fn=tf.nn.relu)
-            fc3 = tf.contrib.layers.fully_connected(fc2, 512, activation_fn=tf.nn.relu)
-            fc4 = tf.contrib.layers.fully_connected(fc3, 512, activation_fn=tf.nn.relu)
-            self.logits = tf.contrib.layers.fully_connected(fc4, self.action_size, activation_fn=None)
+            self.multi_cell = tf.contrib.rnn.MultiRNNCell(self.lstm_cells)
+            self.outputs, self.states = tf.nn.dynamic_rnn(self.multi_cell, self.X_input, dtype=tf.float32)
+            self.states = self.states[-1]
+            with tf.name_scope("Output"):
+                self.out_weights=tf.Variable(tf.truncated_normal([self.layers[-1], self.action_size]))
+                self.out_bias=tf.Variable(tf.zeros([self.action_size]))
+                self.logits = tf.add(tf.matmul(self.states,self.out_weights), self.out_bias)
 
             with tf.name_scope("Cross_Entropy"):
                 self.loss_op = tf.losses.mean_squared_error(self.Y_input,self.logits)
@@ -113,7 +105,7 @@ class Agent(Agent):
         
         act_values = self.sess.run(self.logits, feed_dict={self.X_input: state})
         if np.argmax(act_values[0]) == 1 or np.argmax(act_values[0]) == 2:
-            print("Not Random")
+            pass
         return np.argmax(act_values[0])
 
     def replay(self, time, episode):
@@ -124,20 +116,19 @@ class Agent(Agent):
             mini_batch.append(self.memory[i])
 
         mean_reward = []
-        x = np.zeros((self.batch_size, self.state_size))
+        x = np.zeros((self.batch_size, self.window_size, self.state_size))
         y = np.zeros((self.batch_size, self.action_size))
         for i, (state, action, reward, next_state, done) in enumerate(mini_batch):
             target = reward
             if not done:
                 self.target = reward + self.gamma * np.amax(self.sess.run(self.logits, feed_dict = {self.X_input: next_state})[0])
-            current_q = self.sess.run(self.logits, feed_dict={self.X_input: state})[0]
-            
+            current_q = self.sess.run(self.logits, feed_dict={self.X_input: state})
             current_q[0][action] = self.target
             x[i] = state
             y[i] = current_q
             mean_reward.append(self.target)
         x = x.reshape(self.batch_size, self.window_size, self.state_size)
-        y = y.reshape(self.batch_size, 1, self.action_size)
+        y = y.reshape(self.batch_size, self.action_size)
         #target_f = np.array(target_f).reshape(self.batch_size - 1, self.action_size)
         #target_state = np.array(target_state).reshape(self.batch_size - 1, self.window_size, self.state_size)
         _, c, s = self.sess.run([self.train_op, self.loss_op, self.summ], feed_dict={self.X_input: x, self.Y_input: y, self.rewards: mean_reward}) # Add self.summ into the sess.run for tensorboard
@@ -145,3 +136,5 @@ class Agent(Agent):
 
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay 
+
+        self.memory = []

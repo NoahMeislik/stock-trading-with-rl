@@ -54,7 +54,7 @@ class Agent(Agent):
         # (1,10,9)
         with tf.device("/device:GPU:0"):
             self.X_input = tf.placeholder(tf.float32, shape=(None))
-            self.Y_input = tf.placeholder(tf.float32, shape=(None))
+            self.Y_input = tf.placeholder(tf.float32, shape=(1, self.action_size))
             # self.dropout_keep_prob = tf.placeholder(tf.float32) For dropout
 
             # Can be changed to another initializer
@@ -90,6 +90,7 @@ class Agent(Agent):
     def act(self, state):
         if np.random.rand() <= self.epsilon and not self.is_eval:
             return random.randrange(self.action_size)
+        state = state.reshape((1, self.window_size * self.state_size))
         act_values = self.sess.run(self.logits, feed_dict={self.X_input: state})
         return np.argmax(act_values[0])
 
@@ -102,6 +103,8 @@ class Agent(Agent):
 
         for state, action, reward, next_state, done in mini_batch:
             target = reward
+            state = state.reshape((1, self.window_size * self.state_size))
+            next_state = next_state.reshape((1, self.window_size * self.state_size))
             if not done:
                 self.target = reward + self.gamma * np.amax(self.sess.run(self.logits, feed_dict = {self.X_input: next_state})[0])
                 

@@ -1,5 +1,5 @@
 from env import MarketEnv
-from agents.LSTM import Agent
+from agents.LIN import Agent
 import matplotlib.pyplot as plt
 import datetime
 import os
@@ -8,7 +8,7 @@ def main():
     nb_actions = 3
     obs_size = 9
     window_size = 10
-    batch_size = 1024
+    batch_size = 2048
     stock = "AAPL"
 
 
@@ -31,6 +31,7 @@ def main():
             if len(agent.memory) % batch_size == 0:
                 
                 agent.replay(time, i)
+                
                 if i % 10 == 0:
                     agent.q_values.append(agent.target)
 

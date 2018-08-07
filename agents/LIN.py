@@ -5,7 +5,7 @@ from collections import deque
 from .agent import Agent
 
 class Agent(Agent):
-    def __init__(self, state_size, window_size, action_size, gamma, epsilon, epsilon_decay, epsilon_min, learning_rate, episodes, batch_size = 32, is_eval=False, model_name="", stock_name="", episode=1):
+    def __init__(self, state_size=7, window_size=10, action_size=3, batch_size=64, gamma=.8, epsilon=.99, epsilon_decay=.999, epsilon_min=.01, learning_rate=.01, episodes = 10000, dropout_keep_prob = 0.8, is_eval=False, model_name="", stock_name="", episode=1):
         """
         state_size: Size of the state coming from the environment
         action_size: How many decisions the algo will make in the end
@@ -29,11 +29,12 @@ class Agent(Agent):
         self.model_name = model_name
         self.stock_name = stock_name
         self.q_values = []
+        self.batch_size = batch_size
 
         self.layers = []
         tf.reset_default_graph()
         self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement = True))
-        self.memory = deque(maxlen=2000)
+        self.memory = []
         if self.is_eval:
             self._model_init()
             model_name = stock_name + "-" + str(episode)
@@ -53,24 +54,25 @@ class Agent(Agent):
         """
         # (1,10,9)
         with tf.device("/device:GPU:0"):
-            self.X_input = tf.placeholder(tf.float32, shape=(None))
-            self.Y_input = tf.placeholder(tf.float32, shape=(1, self.action_size))
+            self.X_input = tf.placeholder(tf.float32, shape=(None, self.window_size * self.state_size))
+            self.Y_input = tf.placeholder(tf.float32, shape=(None, self.action_size))
             # self.dropout_keep_prob = tf.placeholder(tf.float32) For dropout
 
             # Can be changed to another initializer
             self.initializer = tf.initializers.truncated_normal(seed=1)
 
             self.neurons = self.X_input
-            self.weights = tf.Variable(self.initializer((self.state_size, self.action_size)), dtype=tf.float32)
+            self.weights = tf.Variable(self.initializer((self.state_size * self.window_size, self.action_size)), dtype=tf.float32)
+            print(self.weights)
             self.biases = tf.Variable(tf.zeros((self.action_size), dtype=tf.float32))
 
-            self.neurons = tf.add(tf.matmul(self.weights, self.neurons), self.biases)
+            self.neurons = tf.add(tf.matmul(self.neurons, self.weights), self.biases)
 
             self.logits = self.neurons
 
             # Mean-Squared-Error
             with tf.name_scope("accuracy"):
-                self.loss_op = tf.losses.mean_squared_error(self.Y_input, self.logits))
+                self.loss_op = tf.losses.mean_squared_error(self.Y_input, self.logits)
                 tf.summary.scalar("accuracy", self.loss_op)
 
 
@@ -94,14 +96,15 @@ class Agent(Agent):
         act_values = self.sess.run(self.logits, feed_dict={self.X_input: state})
         return np.argmax(act_values[0])
 
-    def replay(self, batch_size, time, episode):
+    def replay(self, time, episode):
         mini_batch = []
         l = len(self.memory)
-        for i in range(l - batch_size + 1, l):
+        for i in range(l):
             
             mini_batch.append(self.memory[i])
-
-        for state, action, reward, next_state, done in mini_batch:
+        x = np.zeros((self.batch_size, self.window_size * self.state_size))
+        y = np.zeros((self.batch_size, self.action_size))
+        for i, (state, action, reward, next_state, done) in enumerate(mini_batch):
             target = reward
             state = state.reshape((1, self.window_size * self.state_size))
             next_state = next_state.reshape((1, self.window_size * self.state_size))
@@ -110,8 +113,10 @@ class Agent(Agent):
                 
             target_f = self.sess.run(self.logits, feed_dict={self.X_input: state})
             target_f[0][action] = target
-            _, c, s = self.sess.run([self.train_op, self.loss_op, self.summ], feed_dict={self.X_input: state, self.Y_input: target_f}) # Add self.summ into the sess.run for tensorboard
-            self.writer.add_summary(s, (episode + 1) * time)
-
+            x[i] = state
+            y[i] = target_f[0]
+        _, c, s = self.sess.run([self.train_op, self.loss_op, self.summ], feed_dict={self.X_input: x, self.Y_input:y}) # Add self.summ into the sess.run for tensorboard
+        self.writer.add_summary(s, global_step=(episode + 1) * time)
+        self.memory = []
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay 

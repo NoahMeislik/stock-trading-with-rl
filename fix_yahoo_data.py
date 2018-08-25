@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np 
 
-data = pd.read_csv("data/WTW.csv")
+data = pd.read_csv("data/table_BAC.csv")
 time = np.zeros(len(data))
 data = data.drop('Adj Close', axis=1)
 
@@ -16,4 +16,4 @@ for line in range(len(dates)):
 data.insert(0, "Date", dates)
 print(data.head())
 
-data.to_csv("data/WTW.csv", sep=",", index=False)
+data.to_csv("data/BAC.csv", sep=",", index=False)

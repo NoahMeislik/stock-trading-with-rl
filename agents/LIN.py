@@ -3,9 +3,10 @@ import tensorflow as tf
 import random
 from collections import deque
 from .agent import Agent
+import tflearn
 
 class Agent(Agent):
-    def __init__(self, state_size=7, window_size=10, action_size=3, batch_size=64, gamma=.8, epsilon=.99, epsilon_decay=.999, epsilon_min=.01, learning_rate=.01, episodes = 10000, dropout_keep_prob = 0.8, is_eval=False, model_name="", stock_name="", episode=1):
+    def __init__(self, state_size=7, window_size=10, action_size=3, batch_size=64, gamma=.8, epsilon=.9, epsilon_decay=.999, epsilon_min=.01, learning_rate=.01, episodes = 10000, dropout_keep_prob = 0.8, is_eval=False, model_name="", stock_name="", episode=1):
         """
         state_size: Size of the state coming from the environment
         action_size: How many decisions the algo will make in the end
@@ -54,8 +55,9 @@ class Agent(Agent):
         """
         # (1,10,9)
         with tf.device("/device:GPU:0"):
-            self.X_input = tf.placeholder(tf.float32, shape=(None, self.window_size * self.state_size))
-            self.Y_input = tf.placeholder(tf.float32, shape=(None, self.action_size))
+            self.X_input = tf.placeholder(tf.float32, shape=(None, self.window_size * self.state_size), name="X_input")
+            self.Y_input = tf.placeholder(tf.float32, shape=(None, self.action_size), name="Y_input")
+            self.reward = tf.placeholder(tf.float32, shape=(None), name="reward")
             # self.dropout_keep_prob = tf.placeholder(tf.float32) For dropout
 
             # Can be changed to another initializer
@@ -63,7 +65,6 @@ class Agent(Agent):
 
             self.neurons = self.X_input
             self.weights = tf.Variable(self.initializer((self.state_size * self.window_size, self.action_size)), dtype=tf.float32)
-            print(self.weights)
             self.biases = tf.Variable(tf.zeros((self.action_size), dtype=tf.float32))
 
             self.neurons = tf.add(tf.matmul(self.neurons, self.weights), self.biases)
@@ -75,7 +76,7 @@ class Agent(Agent):
                 self.loss_op = tf.losses.mean_squared_error(self.Y_input, self.logits)
                 tf.summary.scalar("accuracy", self.loss_op)
 
-
+            tf.summary.scalar("Sum of Reward", tf.reduce_sum(self.reward))
             optimizer = tf.train.RMSPropOptimizer(learning_rate = self.learning_rate, decay=.99)
 
             with tf.name_scope("train"):
@@ -91,12 +92,13 @@ class Agent(Agent):
 
     def act(self, state):
         if np.random.rand() <= self.epsilon and not self.is_eval:
-            return random.randrange(self.action_size)
+            act_values = random.randrange(self.action_size)
+            return act_values
         state = state.reshape((1, self.window_size * self.state_size))
         act_values = self.sess.run(self.logits, feed_dict={self.X_input: state})
         return np.argmax(act_values[0])
 
-    def replay(self, time, episode):
+    def replay(self, time, episode, reward):
         mini_batch = []
         l = len(self.memory)
         for i in range(l):
@@ -115,8 +117,8 @@ class Agent(Agent):
             target_f[0][action] = target
             x[i] = state
             y[i] = target_f[0]
-        _, c, s = self.sess.run([self.train_op, self.loss_op, self.summ], feed_dict={self.X_input: x, self.Y_input:y}) # Add self.summ into the sess.run for tensorboard
-        self.writer.add_summary(s, global_step=(episode + 1) * time)
+        _, c, s = self.sess.run([self.train_op, self.loss_op, self.summ], feed_dict={self.X_input: x, self.Y_input:y, self.reward: reward}) # Add self.summ into the sess.run for tensorboard
+        self.writer.add_summary(s)
         self.memory = []
         if self.epsilon > self.epsilon_min:
             self.epsilon *= self.epsilon_decay 

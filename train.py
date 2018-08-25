@@ -1,39 +1,59 @@
 from env import MarketEnv
-from agents.LIN import Agent
+from agents.A2C import Agent
 import matplotlib.pyplot as plt
 import datetime
 import os
+import time
+import atexit
+import numpy as np
 
+start_time = time.clock()
+def exit_handler():
+    time_done = time.clock() - start_time
+    print("The program took: " + str(time_done) + " seconds" )
+    
 def main():
-    nb_actions = 3
     obs_size = 9
     window_size = 10
     batch_size = 2048
-    stock = "AAPL"
+    episodes = 10000
+    stock = "BAC"
+
+    args = {'tau': .001, 'gamma': .99, 'lr_actor': .0001, 'lr_critic': .001, 'batch_size': batch_size}
 
 
-    agent = Agent(state_size=obs_size, window_size=window_size, action_size=nb_actions, batch_size=batch_size, gamma=0.7, epsilon=.9, epsilon_decay=0.999, epsilon_min=0.01, learning_rate=0.01, dropout_keep_prob=0.8, stock_name=stock)
-    env = MarketEnv(stock, window_size = window_size, state_size=obs_size, shares_to_buy = 1, train_test_split=.8)
+    env = MarketEnv(stock, window_size = window_size, state_size=obs_size, account_balance = 1000000, shares_to_buy = 10, train_test_split=.8)
+    agent = Agent(args, state_size=env.state_size, window_size=env.window_size, action_size=env.action_size, action_bound=env.action_bound[1], is_eval=False, stock_name=stock)
 
 
     for i in range(10000):
         state = env.reset()
+        episode_ave_max_q = 0
+        ep_reward = 0
 
         for time in range(env.l):
-            if time % 100 == 0:
-                print(time)
-            action = agent.act(state)
+            
+            action = agent.act(state)[0]
+            
+            if action < 0:
+                choice = 2
+            elif action > 0 and action[0] < 1:
+                choice = 0
+            elif action > 1:
+                choice = 1
 
-            next_state, action, reward, done = env.step(action, time)
-
+            next_state, reward, done = env.step(choice, time)
+            
             agent.remember(state, action, reward, next_state, done)
             state = next_state
-            if len(agent.memory) % batch_size == 0:
-                
-                agent.replay(time, i)
-                
-                if i % 10 == 0:
-                    agent.q_values.append(agent.target)
+            if agent.replay_buffer.size() % batch_size == 0:
+                episode_ave_max_q += agent.replay(time, i, episode_ave_max_q)
+            
+            ep_reward += reward
+
+            if env.account_balance < 0 and len(env.inventory) == 0:
+                break
+
 
         model_name = "{}-{}".format(stock, str(i))
         path = "models/{}/{}/".format(stock, model_name)
@@ -46,27 +66,16 @@ def main():
                 pass
             agent.saver.save(agent.sess, path + model_name, global_step = i)
 
-        print("\nEpisode " + str(i) + " finished")
+
+        summary_str = agent.sess.run(agent.summary_ops, feed_dict={agent.summary_vars[0]: ep_reward, agent.summary_vars[1]: episode_ave_max_q})
+
+        agent.writer.add_summary(summary_str, i)
+        agent.writer.flush()
+
+        print('| Reward: {:d} | Episode: {:d} | Qmax: {:.4f}'.format(int(ep_reward), i, (episode_ave_max_q)))
+        
         
 
-        if i == 10000:
-            prices = [line[-2] for line in env.prices]
-            dates = [i for i in range(len(env.prices))]
-            plt.plot(dates, prices)
-
-            for line in env.buy:
-                plt.plot(line[0], line[1], 'ro', color="r", markersize=2)
-
-            for line in env.sell:
-                plt.plot(line[0], line[1], "ro", color="g", markersize=2)
-
-            plt.plot(agent.q_values)
-
-            plt.show()
-
-            plt.plot(agent.q_values)
-
-            plt.show()
-
+atexit.register(exit_handler)
 main()
 

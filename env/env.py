@@ -94,13 +94,20 @@ class MarketEnv():
                 self.reward = max(profit, 0) # Change to 0 to reset to normal
             else:
                 self.unprofitable_trades += 1
-                self.reward = -1
+                self.reward = -profit
             self.episode_profit += profit
             self.account_balance += profit
             print("Sell: " + str(self.prices[time][3]  * self.shares_to_buy) + " | Profit: " + str(profit))
             self.sell.append((time, self.prices[time][3]))
 
-        self.done = True if time == self.l - 1 else False
+        self.done = True if time == self.l - 1 or self.account_balance < 0 else False
+
+        if time == self.l - 1:
+            self.done = True
+        elif self.account_balance < 0 and len(self.inventory) < 1:
+            self.done = True
+        else:
+            self.done = False
 
         if self.done:
             self._flatten()

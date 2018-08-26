@@ -347,6 +347,7 @@ class Agent(Agent):
         self.actor.update_target_network()
         self.critic.update_target_network()
 
+        self.replay_buffer.clear()
         return np.amax(predicted_q_value)
 
         

@@ -46,7 +46,9 @@ def main():
             
             agent.remember(state, action, reward, next_state, done)
             state = next_state
-            if agent.replay_buffer.size() % batch_size == 0:
+            
+            if agent.replay_buffer.size() == batch_size:
+                print("Replaying")
                 episode_ave_max_q += agent.replay(time, i, episode_ave_max_q)
             
             ep_reward += reward

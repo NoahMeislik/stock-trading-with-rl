@@ -170,7 +170,7 @@ class CriticNetwork(object):
                 for i in range(len(self.target_network_params))]
 
         # Network target (y_i)
-        self.predicted_q_value = tf.placeholder(tf.float32, [None, 1], name="predicted_q_value")
+        self.predicted_q_value = tf.placeholder(tf.float32, [None, 1])
 
         # Define loss and optimization Op
         self.loss = tflearn.mean_square(self.predicted_q_value, self.out)

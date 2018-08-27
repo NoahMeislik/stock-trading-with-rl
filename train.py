@@ -17,16 +17,17 @@ def main():
     window_size = 10
     batch_size = 2048
     episodes = 10000
+    max_episode_len = 39000 * 3 # One Year of trading in minutes
     stock = "BAC"
 
     args = {'tau': .001, 'gamma': .99, 'lr_actor': .0001, 'lr_critic': .001, 'batch_size': batch_size}
 
 
-    env = MarketEnv(stock, window_size = window_size, state_size=obs_size, account_balance = 1000000, shares_to_buy = 10, train_test_split=.8)
+    env = MarketEnv(stock, window_size = window_size, state_size=obs_size, account_balance = 1000000, shares_to_buy = 1000, train_test_split=.8, max_episode_len=max_episode_len)
     agent = Agent(args, state_size=env.state_size, window_size=env.window_size, action_size=env.action_size, action_bound=env.action_bound[1], is_eval=False, stock_name=stock)
 
 
-    for i in range(10000):
+    for i in range(episodes):
         state = env.reset()
         episode_ave_max_q = 0
         ep_reward = 0
@@ -53,8 +54,10 @@ def main():
             
             ep_reward += reward
 
-            if env.account_balance < 0 and len(env.inventory) == 0:
+            if done:
+                "Episode Finishing from either account balance being too low or end time reached."
                 break
+            
 
 
         model_name = "{}-{}".format(stock, str(i))

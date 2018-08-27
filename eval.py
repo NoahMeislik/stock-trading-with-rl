@@ -8,9 +8,9 @@ def main():
     nb_actions = 3
     obs_size = 9
     window_size = 10
-    batch_size = 256
+    batch_size = 2048
     stock = "BAC"
-    episode = 75
+    episode = 10
     total_spent = 0
     total_sold = 0
 
@@ -22,7 +22,14 @@ def main():
     state = env.reset()
 
     for time in range(env.l):
-        action = agent.act(state)
+        action = agent.act(state)[0]
+            
+        if action < 0:
+            choice = 2
+        elif action > 0 and action[0] < 1:
+            choice = 0
+        elif action > 1:
+            choice = 1
         
         next_state, action, reward, done = env.step(action, time)
 

@@ -4,13 +4,9 @@ import matplotlib.pyplot as plt
 import datetime
 import os
 import time
-import atexit
 import numpy as np
 
-start_time = time.clock()
-def exit_handler():
-    time_done = time.clock() - start_time
-    print("The program took: " + str(time_done) + " seconds" )
+
     
 def main():
     obs_size = 9
@@ -23,7 +19,7 @@ def main():
     args = {'tau': .001, 'gamma': .99, 'lr_actor': .0001, 'lr_critic': .001, 'batch_size': batch_size}
 
 
-    env = MarketEnv(stock, window_size = window_size, state_size=obs_size, account_balance = 1000000, shares_to_buy = 1000, train_test_split=.8, max_episode_len=max_episode_len)
+    env = MarketEnv(stock, window_size = window_size, state_size=obs_size, account_balance = 1000000, shares_to_buy = 100, train_test_split=.8, max_episode_len=max_episode_len)
     agent = Agent(args, state_size=env.state_size, window_size=env.window_size, action_size=env.action_size, action_bound=env.action_bound[1], is_eval=False, stock_name=stock)
 
 
@@ -80,7 +76,5 @@ def main():
         print('| Reward: {:d} | Episode: {:d} | Qmax: {:.4f}'.format(int(ep_reward), i, (episode_ave_max_q)))
         
         
-
-atexit.register(exit_handler)
 main()
 

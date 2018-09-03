@@ -338,12 +338,12 @@ class Agent(Agent):
         target_q = self.critic.predict_target(s2_batch, self.actor.predict_target(s2_batch))
 
         y_i = []
-        for k in range(self.batch_size):
+        for k in range(len(s_batch)):
             if t_batch[k]:
                 y_i.append(r_batch[k])
             else:
                 y_i.append(r_batch[k] + self.critic.gamma * target_q[k])
-        y_i = np.reshape(y_i, [self.batch_size, 1])
+        y_i = np.reshape(y_i, [len(s_batch), 1])
 
         predicted_q_value, _ = self.critic.train(s_batch, a_batch, y_i)
 

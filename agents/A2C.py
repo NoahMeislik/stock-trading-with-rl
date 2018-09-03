@@ -66,7 +66,8 @@ class ActorNetwork(object):
         self.batch_size = batch_size
 
         # Actor Network
-        self.inputs, self.out, self.scaled_out = self.create_actor_network()
+        with tf.variable_scope("Actor"):
+            self.inputs, self.out, self.scaled_out = self.create_actor_network()
 
         self.network_params = tf.trainable_variables()
 
@@ -102,10 +103,10 @@ class ActorNetwork(object):
         inputs = tflearn.input_data(shape=[None, self.s_dim])
         net = tflearn.fully_connected(inputs, 400)
         net = tflearn.layers.normalization.batch_normalization(net)
-        net = tflearn.activations.relu(net)
+        net = tflearn.activations.leaky_relu(net)
         net = tflearn.fully_connected(net, 300)
         net = tflearn.layers.normalization.batch_normalization(net)
-        net = tflearn.activations.relu(net)
+        net = tflearn.activations.leaky_relu(net)
         # Final layer weights are init to Uniform[-3e-3, 3e-3]
         w_init = tflearn.initializations.uniform(minval=-0.003, maxval=0.003)
         out = tflearn.fully_connected(
@@ -189,7 +190,7 @@ class CriticNetwork(object):
         action = tflearn.input_data(shape=[None, self.a_dim])
         net = tflearn.fully_connected(inputs, 400)
         net = tflearn.layers.normalization.batch_normalization(net)
-        net = tflearn.activations.relu(net)
+        net = tflearn.activations.leaky_relu(net)
 
         # Add the action tensor in the 2nd hidden layer
         # Use two temp layers to get the corresponding weights and biases
@@ -197,7 +198,7 @@ class CriticNetwork(object):
         t2 = tflearn.fully_connected(action, 300)
 
         net = tflearn.activation(
-            tf.matmul(net, t1.W) + tf.matmul(action, t2.W) + t2.b, activation='relu')
+            tf.matmul(net, t1.W) + tf.matmul(action, t2.W) + t2.b, activation='leaky_relu')
 
         # linear layer connected to 1 output representing Q(s,a)
         # Weights are init to Uniform[-3e-3, 3e-3]
@@ -289,10 +290,12 @@ class Agent(Agent):
         self.model_name = model_name
         self.stock_name = stock_name
         
+        
 
         self.layers = []
         tf.reset_default_graph()
         self.sess = tf.Session(config=tf.ConfigProto(allow_soft_placement = True))
+
         self.memory = []
         if self.is_eval:
             self._model_init()
@@ -301,7 +304,9 @@ class Agent(Agent):
             self.saver.restore(self.sess, tf.train.latest_checkpoint("models/{}/{}".format(stock_name, model_name)))
         else:
             self._model_init()
-            self.saver = tf.train.Saver()
+            tflearn.is_training(True, session=self.sess)
+            self.actor_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="Actor")
+            self.saver = tf.train.Saver(self.actor_vars)
             self.sess.run(self.init)
             path = "models/{}/1".format(self.stock_name)
             self.writer = tf.summary.FileWriter(path)
@@ -319,6 +324,7 @@ class Agent(Agent):
         self.critic = CriticNetwork(self.sess, self.state_size, self.action_size, self.lr_critic, self.tau, self.gamma, self.actor.get_num_trainable_vars())
         self.actor_noise = OrnsteinUhlenbeckActionNoise(mu=np.zeros(self.action_size))
         self.init = tf.global_variables_initializer()
+
 
     def remember(self, state, action, reward, next_state, done):
         self.replay_buffer.add(state.reshape(self.state_size), action, reward, done, next_state.reshape(self.state_size))

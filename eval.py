@@ -10,12 +10,12 @@ def main():
     window_size = 10
     batch_size = 2048
     stock = "BAC"
-    episode = 10
+    episode = 35
     total_spent = 0
     total_sold = 0
 
-    agent = Agent(state_size = obs_size, window_size = window_size, action_size = nb_actions, batch_size = batch_size, gamma=0.95, epsilon=1.0, epsilon_decay=0.99, epsilon_min=0.001, learning_rate=0.001, is_eval=True, stock_name=stock, episode=episode)
-    env = MarketEnv(stock, window_size=window_size, state_size = obs_size, account_balance = 1000000, is_eval=True, shares_to_buy = 10, train_test_split=.8)
+    agent = Agent(window_size = window_size, action_size = nb_actions, batch_size = batch_size, gamma=0.95, epsilon=1.0, epsilon_decay=0.99, epsilon_min=0.001, learning_rate=0.001, is_eval=True, stock_name=stock, episode=episode)
+    env = MarketEnv(stock, window_size=window_size, state_size = obs_size, account_balance = 1000000, is_eval=True, shares_to_buy = 100, max_positions = 1000, train_test_split=.8)
 
 
     

@@ -9,7 +9,6 @@ import numpy as np
 
     
 def main():
-    obs_size = 9
     window_size = 10
     batch_size = 2048
     episodes = 10000
@@ -19,7 +18,7 @@ def main():
     args = {'tau': .001, 'gamma': .99, 'lr_actor': .0001, 'lr_critic': .001, 'batch_size': batch_size}
 
 
-    env = MarketEnv(stock, window_size = window_size, state_size=obs_size, account_balance = 1000000, shares_to_buy = 100, train_test_split=.8, max_episode_len=max_episode_len)
+    env = MarketEnv(stock, window_size = window_size, account_balance = 1000000, shares_to_buy = 100, train_test_split=.8, max_episode_len=max_episode_len)
     agent = Agent(args, state_size=env.state_size, window_size=env.window_size, action_size=env.action_size, action_bound=env.action_bound[1], is_eval=False, stock_name=stock)
 
 

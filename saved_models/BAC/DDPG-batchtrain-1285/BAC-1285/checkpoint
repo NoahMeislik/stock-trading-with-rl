@@ -1,0 +1,6 @@
+model_checkpoint_path: "BAC-1285-1285"
+all_model_checkpoint_paths: "..\\BAC-1265\\BAC-1265-1265"
+all_model_checkpoint_paths: "..\\BAC-1270\\BAC-1270-1270"
+all_model_checkpoint_paths: "..\\BAC-1275\\BAC-1275-1275"
+all_model_checkpoint_paths: "..\\BAC-1280\\BAC-1280-1280"
+all_model_checkpoint_paths: "BAC-1285-1285"

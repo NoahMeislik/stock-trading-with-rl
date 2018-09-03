@@ -154,7 +154,8 @@ class CriticNetwork(object):
         self.gamma = gamma
 
         # Create the critic network
-        self.inputs, self.action, self.out = self.create_critic_network()
+        with tf.variable_scope("Critic"):
+            self.inputs, self.action, self.out = self.create_critic_network()
 
         self.network_params = tf.trainable_variables()[num_actor_vars:]
 
@@ -306,7 +307,7 @@ class Agent(Agent):
             self._model_init()
             tflearn.is_training(True, session=self.sess)
             self.actor_vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope="Actor")
-            self.saver = tf.train.Saver(self.actor_vars)
+            self.saver = tf.train.Saver(var_list=self.actor_vars)
             self.sess.run(self.init)
             path = "models/{}/1".format(self.stock_name)
             self.writer = tf.summary.FileWriter(path)
@@ -342,8 +343,8 @@ class Agent(Agent):
                 y_i.append(r_batch[k])
             else:
                 y_i.append(r_batch[k] + self.critic.gamma * target_q[k])
-
         y_i = np.reshape(y_i, [self.batch_size, 1])
+
         predicted_q_value, _ = self.critic.train(s_batch, a_batch, y_i)
 
         a_outs = self.actor.predict(s_batch)

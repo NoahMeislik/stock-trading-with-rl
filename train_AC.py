@@ -162,7 +162,7 @@ def main():
     DEBUG = (args.mode == "debug")
     CHECKPOINT_PATH = args.checkpoint_dir + '-'+ "BAC"[0]
     MAX_ROLLS = 7
-    ITER = 5000000
+    ITER = 50000
     LOG_ROUND = 10
     env, MAX_PATH_LENGTH, EP_LENGTH_STOP = get_roll_params()
 

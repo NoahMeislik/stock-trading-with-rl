@@ -70,7 +70,7 @@ class MarketEnv():
             elif self.is_eval:
                 self.prices = data.values[int(np.floor(self.train_test_split * size)):]
                 self.data = scaler.fit_transform(data.values[int(np.floor(self.train_test_split * size)):])
-        self.state_size = self.data.shape[1]
+        self.state_size = self.data.shape[1] + 1
         
 
     def _flatten(self, time):
@@ -87,7 +87,7 @@ class MarketEnv():
             else:
                 self.unprofitable_trades += 1
             
-            self.reward += profit
+            # self.reward += profit
             self.inventory.remove(price)
 
             
@@ -108,6 +108,7 @@ class MarketEnv():
         self.unprofitable_trades = 0
 
         self.random_start = random.randint(1, self.l) - self.window_size if not self.is_eval else 0
+        print(self.random_start)
         self.state = getState(self.data, 0, self.window_size, self.random_start, self.unrealized_gain, self.account_balance).reshape(self.state_size)
 
         return self.state
@@ -172,6 +173,6 @@ class MarketEnv():
                 print("Account Balance: " + str(self.account_balance))
                 print("--------------------------------")
 
-        self.unrealized_gain = self.data[time][self.buy_position]  * self.shares_to_buy - self.inventory[0] if len(self.inventory) > 0 else 0.
+        self.unrealized_gain = (((self.prices[time][self.buy_position] * self.shares_to_buy) - (self.min_commision + (self.commision_per_share * (self.shares_to_buy - 1)))) - self.inventory[0]) / (self.inventory[0]) if len(self.inventory) > 0 else 0.
         self.state = getState(self.data, time, self.window_size, self.random_start, self.unrealized_gain, self.account_balance).reshape(self.state_size)
         return self.state, self.reward, self.done

@@ -40,8 +40,11 @@ class Actor(object):
         with tf.variable_scope('Actor'):
             self.ob = tf.placeholder(shape=[None, num_ob_feat], dtype=tf.float32)
             x = tf.layers.dense(name='first_layer', inputs=self.ob, units=128, activation=lrelu, kernel_initializer=xavier)
+            # x = tf.nn.dropout(x, 0.8)
             x1 = tf.layers.dense(name='second_layer',  inputs=x, units=128, activation=lrelu, kernel_initializer=xavier)
+            # x1 = tf.nn.dropout(x1, 0.8)
             x2 = tf.layers.dense(name='third_layer',  inputs=x1, units=64, activation=lrelu, kernel_initializer=xavier)
+            # x2 = tf.nn.dropout(x2, 0.8)
             self.adv = tf.placeholder(shape=[None], dtype=tf.float32)
             self.logp_feed = tf.placeholder(shape=[None], dtype=tf.float32)
             if act_type == 'cont':            
@@ -130,8 +133,12 @@ class Critic(object):
             self.obs = tf.placeholder(shape=[None, num_ob_feat], dtype=tf.float32)
             obs_scaled = ob_scale * self.obs
             x = tf.layers.dense(name='first_layer', inputs=obs_scaled, units=256, activation=tf.nn.relu, kernel_initializer=xavier)
+            # x = tf.nn.dropout(x, 0.8)
             x1 = tf.layers.dense(name='second_layer',  inputs=x, units=128, activation=tf.nn.relu, kernel_initializer=xavier)
+            # x1 = tf.nn.dropout(x1, 0.8)
             x2 = tf.layers.dense(name='third_layer', inputs=x1, activation= tf.nn.relu,  units=128)
+            # x2 = tf.nn.dropout(x2, 0.8)
+
             v = tf.layers.dense(name='value', inputs=x1, units=1)
             v = tf.reshape(v, [-1])
             v_ = tf.placeholder(shape=[None], dtype=tf.float32)

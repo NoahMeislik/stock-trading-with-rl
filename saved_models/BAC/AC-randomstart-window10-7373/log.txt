@@ -8,6 +8,7 @@ Critic Layers: 3
 Action Type: Discrete
 Max Positions: 3
 Shares To Buy: 1000
+Dropout: None
 
 
 step avg_rew ev_before ev_after act_loss crit_loss kl_dist avg_ent

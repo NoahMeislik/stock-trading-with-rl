@@ -23,8 +23,10 @@ def sigmoid(x):
 
 def getState(data, t, n, random_start, unrealized_gain, account_balance):
   start = random_start + t
-  block = np.array(data[start:start + n])
-  return block
+  block = np.array(data[start:start + n]).tolist()
+  for i in range(len(block)):
+      block[i].append(unrealized_gain)
+  return np.array(block)
 
 def var_accounted_for(target, pred):
     """

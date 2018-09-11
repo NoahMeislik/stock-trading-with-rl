@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from sklearn.preprocessing import StandardScaler
 
 class MarketEnv():
-    def __init__(self, stock_name, buy_position, window_size = 1, account_balance = 1000000, shares_to_buy = 1, max_positions = 3,  min_commision = 1.00, commision_per_share = .005, max_episode_len=100000, train_test_split = None, print_report = True, is_eval = False):
+    def __init__(self, stock_name, buy_position, window_size = 1, account_balance = 1000000, shares_to_buy = 1000, max_positions = 1,  min_commision = 1.00, commision_per_share = .005, max_episode_len=10000, train_test_split = None, print_report = True, is_eval = False):
         """Market Environment base class. Please be careful, a strategy tested using this environment may have completely different results in practice.
 
         Args:
@@ -31,8 +31,9 @@ class MarketEnv():
         """
         self.stock_name = stock_name
         self.window_size = window_size
-        self.action_size = 1
+        self.action_size = 3
         self.action_bound = np.array([-10., 10.])
+        self.action_space = "discrete"
         self.starting_balance = account_balance
         self.account_balance = account_balance
         self.shares_to_buy = shares_to_buy
@@ -47,10 +48,10 @@ class MarketEnv():
         self.state = None
         self.done = True # Start off by calling MarketEnv.reset() will change this to false
         self.is_eval = is_eval
-        
 
         self._get_data()
         self.l = len(self.data) - 1 - self.window_size # add the random start to the end of the self.l
+    
         
 
     def _get_data(self):
@@ -72,13 +73,24 @@ class MarketEnv():
         self.state_size = self.data.shape[1]
         
 
-    def _flatten(self):
+    def _flatten(self, time):
         """Sell off all positions at the end of an episode
         """
         for price in self.inventory:
-            self.episode_profit += price - self.prices[-1][self.buy_position] # Change this for real data
+            
+            adj_price = (self.prices[time][self.buy_position] * self.shares_to_buy) - (self.min_commision + (self.commision_per_share * (self.shares_to_buy - 1)))
+            self.account_balance += adj_price
+            profit = adj_price - price
+            self.episode_profit += profit
+            if profit > 0:
+                self.profitable_trades += 1
+            else:
+                self.unprofitable_trades += 1
+            
+            self.reward += profit
             self.inventory.remove(price)
 
+            
     def reset(self):
         """Call before and after an episode. Resets all environment variables. Will reset account_balance to the starting amount.
         """
@@ -95,9 +107,8 @@ class MarketEnv():
         self.profitable_trades = 0
         self.unprofitable_trades = 0
 
-        self.random_start = random.randint(1, self.l) - self.window_size
-        print("Random Starting Point: " + str(self.random_start))        
-        self.state = getState(self.data, 0, self.window_size, self.random_start, self.unrealized_gain, self.account_balance).reshape(1, self.window_size, self.state_size)
+        self.random_start = random.randint(1, self.l) - self.window_size if not self.is_eval else 0
+        self.state = getState(self.data, 0, self.window_size, self.random_start, self.unrealized_gain, self.account_balance).reshape(self.state_size)
 
         return self.state
 
@@ -154,7 +165,7 @@ class MarketEnv():
             self.done = False
 
         if self.done:
-            self._flatten()
+            self._flatten(time)
             if self.print_report:
                 print("--------------------------------")
                 print("Total Profit: " + str(self.episode_profit))
@@ -162,6 +173,5 @@ class MarketEnv():
                 print("--------------------------------")
 
         self.unrealized_gain = self.data[time][self.buy_position]  * self.shares_to_buy - self.inventory[0] if len(self.inventory) > 0 else 0.
-        self.state = getState(self.data, time, self.window_size, self.random_start, self.unrealized_gain, self.account_balance).reshape(1, self.window_size, self.state_size)
-
+        self.state = getState(self.data, time, self.window_size, self.random_start, self.unrealized_gain, self.account_balance).reshape(self.state_size)
         return self.state, self.reward, self.done

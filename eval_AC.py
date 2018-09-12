@@ -58,7 +58,10 @@ def rollout(env, sess, policy, framer, max_path_length=100):
     while t < max_path_length and not done:
         t += 1
         ac, logp, ent = policy(framer.last(obs), sess=sess)
-        
+        # if its losing more than .02% then sell
+        # if len(env.inventory) >= 1:
+        #     if ((env.price - env.inventory[0]) / env.inventory[0]) < 0:
+        #         ac = 2
         ob, rew, done = env.step(ac, t)
         obs.append(ob)
         rews.append(rew)
@@ -72,7 +75,7 @@ def get_roll_params():
     """
     Creates environment and sets up the rollout params.
     """
-    env = MarketEnv("BAC", 3, is_eval=True, max_positions=1)
+    env = MarketEnv("BAC", 3, is_eval=True, max_positions=10, train_test_split=0.8, max_episode_len=1000000, shares_to_buy=2000)
     max_path_length, ep_length_stop = env.l, env.l
     
     print('\nMAX PATH LENGTH, EP LENGTH STEP: {}, {}\n'.format(max_path_length, ep_length_stop))

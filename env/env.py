@@ -128,9 +128,11 @@ class MarketEnv():
         """
         if self.done:
             raise ValueError("Done, call reset to start again!")
+            
+        self.price = (self.prices[time][self.buy_position] * self.shares_to_buy) - (self.min_commision + (self.commision_per_share * (self.shares_to_buy - 1)))
+            
         if self.action == 0:
             profit = 0
-
         if action == 1 and self.account_balance > 0 + self.prices[time][self.buy_position] and len(self.inventory) < self.max_positions: # buy
             price = (self.prices[time][self.buy_position] * self.shares_to_buy) + (self.min_commision + (self.commision_per_share * (self.shares_to_buy - 1)))
             self.inventory.append(price) # Change -2 to wherever the close is
@@ -138,9 +140,7 @@ class MarketEnv():
             print("Buy: " + str(self.prices[time][self.buy_position]  * self.shares_to_buy))
             self.buy.append((time, self.prices[time][self.buy_position]))
             profit = 0
-            
-
-        elif action == 2 and len(self.inventory) > 0:
+        if action == 2 and len(self.inventory) > 0:
             bought_price = self.inventory.pop(0)
             price = (self.prices[time][self.buy_position] * self.shares_to_buy) - (self.min_commision + (self.commision_per_share * (self.shares_to_buy - 1)))
             profit = price - bought_price

@@ -119,7 +119,7 @@ def get_roll_params():
     """
     Creates environment and sets up the rollout params.
     """
-    env = MarketEnv("BAC", 3, max_positions=10, shares_to_buy=1000)
+    env = MarketEnv("BAC", 3, max_positions=10, shares_to_buy=1000, train_test_split=0.8)
     max_path_length, ep_length_stop = 10000, 10000
     
     print('\nMAX PATH LENGTH, EP LENGTH STEP: {}, {}\n'.format(max_path_length, ep_length_stop))

@@ -31,9 +31,9 @@ class MarketEnv():
         """
         self.stock_name = stock_name
         self.window_size = window_size
-        self.action_size = 3
-        self.action_bound = np.array([-10., 10.])
-        self.action_space = "discrete"
+        self.action_size = 1
+        self.action_bound = np.array([-1., 1.])
+        self.action_space = "continuous"
         self.starting_balance = account_balance
         self.account_balance = account_balance
         self.shares_to_buy = shares_to_buy
@@ -108,7 +108,7 @@ class MarketEnv():
         self.unprofitable_trades = 0
 
         self.random_start = random.randint(1, self.l) - self.window_size if not self.is_eval else 0
-        print(self.random_start)
+        print("Random Start: " + str(self.random_start))
         self.state = getState(self.data, 0, self.window_size, self.random_start, self.unrealized_gain, self.account_balance).reshape(self.state_size)
 
         return self.state
@@ -126,21 +126,29 @@ class MarketEnv():
 
 
         """
+
+        # Reward is realized PnL, unrealized PnL is in each observation
+        
         if self.done:
             raise ValueError("Done, call reset to start again!")
-            
+        self.action = float(action)        # Save raw un-clipped action (but make sure it's a float)
+        
+        action = np.clip(action, self.action_bound[0], self.action_bound[1])
+        
+        action = np.asscalar(action)
+        
         self.price = (self.prices[time][self.buy_position] * self.shares_to_buy) - (self.min_commision + (self.commision_per_share * (self.shares_to_buy - 1)))
             
-        if self.action == 0:
-            profit = 0
+        profit = 0
         if action == 1 and self.account_balance > 0 + self.prices[time][self.buy_position] and len(self.inventory) < self.max_positions: # buy
             price = (self.prices[time][self.buy_position] * self.shares_to_buy) + (self.min_commision + (self.commision_per_share * (self.shares_to_buy - 1)))
             self.inventory.append(price) # Change -2 to wherever the close is
             self.account_balance -= price
             print("Buy: " + str(self.prices[time][self.buy_position]  * self.shares_to_buy))
             self.buy.append((time, self.prices[time][self.buy_position]))
-            profit = 0
-        if action == 2 and len(self.inventory) > 0:
+            
+            
+        if action == -1 and len(self.inventory) > 0:
             bought_price = self.inventory.pop(0)
             price = (self.prices[time][self.buy_position] * self.shares_to_buy) - (self.min_commision + (self.commision_per_share * (self.shares_to_buy - 1)))
             profit = price - bought_price
@@ -153,10 +161,11 @@ class MarketEnv():
             print("Sell: " + str(self.prices[time][self.buy_position]  * self.shares_to_buy) + " | Profit: " + str(profit))
             print("Account Balance: " + str(self.account_balance))
             self.sell.append((time, self.prices[time][self.buy_position]))
+            self.episode_profit += float(profit)
+
 
         self.reward = profit
-        self.episode_profit += float(profit)
-        profit = 0
+       
 
         if time + self.random_start == self.l or time == self.max_episode_len:
             self.done = True

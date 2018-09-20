@@ -31,9 +31,9 @@ class MarketEnv():
         """
         self.stock_name = stock_name
         self.window_size = window_size
-        self.action_size = 1
+        self.action_size = 3
         self.action_bound = np.array([-1., 1.])
-        self.action_space = "continuous"
+        self.action_space = "discrete"
         self.starting_balance = account_balance
         self.account_balance = account_balance
         self.shares_to_buy = shares_to_buy

@@ -5,7 +5,7 @@ import argparse
 from scipy import signal
 import os 
 from env import MarketEnv
-from agents import AC as pol
+from agents import A2C as pol
 
 parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 parser.add_argument("--seed", default=12321, type=int)  
